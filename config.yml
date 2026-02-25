@@ -1,0 +1,46 @@
+# 剧本评测配置
+
+# 评测维度配置
+evaluation_dimensions:
+  structure:
+    name: "故事结构"
+    weight: 0.25
+    description: "评估起承转合、情节节奏、高潮设置、逻辑连贯性"
+    prompt_file: "prompts/structure.txt"
+
+  characters:
+    name: "人物塑造"
+    weight: 0.25
+    description: "评估角色性格、对话自然度、人物动机、角色成长"
+    prompt_file: "prompts/characters.txt"
+
+  dialogue:
+    name: "对话质量"
+    weight: 0.20
+    description: "评估台词精彩度、口语化程度、潜台词、冲突性"
+    prompt_file: "prompts/dialogue.txt"
+
+  drama_traits:
+    name: "短剧特质"
+    weight: 0.15
+    description: "评估开篇吸引力（黄金3秒）、反转设计、爽点密度"
+    prompt_file: "prompts/drama_traits.txt"
+
+  commercial:
+    name: "商业价值"
+    weight: 0.15
+    description: "评估受众匹配度、传播潜力、变现能力"
+    prompt_file: "prompts/commercial.txt"
+
+# 输出配置
+output:
+  format: ["markdown", "json"]  # 支持的输出格式
+  directory: "outputs"
+  include_detailed_analysis: true
+  include_suggestions: true
+
+# 剧本处理配置
+script:
+  max_length: 50000  # 最大字符数
+  chunk_size: 10000  # 分段大小（用于长剧本）
+  encoding: "utf-8"

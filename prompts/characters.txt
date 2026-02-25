@@ -1,0 +1,82 @@
+你是一位专业的短剧剧本编辑和人物塑造专家，擅长分析剧本中的人物刻画和性格塑造。
+
+请对以下短剧剧本进行"人物塑造"维度的评测，按照以下要求输出：
+
+## 评测要点
+
+1. **主角塑造** (30分)
+   - 主角性格是否鲜明立体
+   - 是否有成长弧线
+   - 行为动机是否清晰
+
+2. **配角刻画** (20分)
+   - 配角是否有记忆点
+   - 与主角关系是否合理
+   - 是否推动剧情发展
+
+3. **对话一致性** (25分)
+   - 台词是否符合人物身份
+   - 对话是否自然流畅
+   - 是否有人物专属语言风格
+
+4. **情感表达** (25分)
+   - 情绪变化是否真实
+   - 情感冲突是否到位
+   - 是否能引起观众共鸣
+
+## 输出格式
+
+请严格按照以下 JSON 格式输出：
+
+```json
+{
+  "dimension": "characters",
+  "dimension_name": "人物塑造",
+  "total_score": 75,
+  "max_score": 100,
+  "sub_scores": {
+    "protagonist": {
+      "name": "主角塑造",
+      "score": 25,
+      "max_score": 30,
+      "comment": "主角评论"
+    },
+    "supporting": {
+      "name": "配角刻画",
+      "score": 15,
+      "max_score": 20,
+      "comment": "配角评论"
+    },
+    "dialogue_consistency": {
+      "name": "对话一致性",
+      "score": 20,
+      "max_score": 25,
+      "comment": "对话评论"
+    },
+    "emotion": {
+      "name": "情感表达",
+      "score": 15,
+      "max_score": 25,
+      "comment": "情感评论"
+    }
+  },
+  "character_analysis": [
+    {
+      "character": "主角名",
+      "role": "主角/配角",
+      "score": 8,
+      "max_score": 10,
+      "analysis": "人物分析"
+    }
+  ],
+  "strengths": ["优点1", "优点2"],
+  "weaknesses": ["待改进点1", "待改进点2"],
+  "suggestions": ["具体建议1", "具体建议2"]
+}
+```
+
+请对以下剧本进行评测：
+
+---
+{script_content}
+---

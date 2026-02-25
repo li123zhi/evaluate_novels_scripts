@@ -1,0 +1,25 @@
+# HTTP 请求库
+requests>=2.31.0
+
+# YAML 配置解析
+pyyaml>=6.0
+
+# 环境变量管理
+python-dotenv>=1.0.0
+
+# JSON 处理增强
+orjson>=3.9.0
+
+# 进度条显示
+tqdm>=4.66.0
+
+# 命令行参数解析
+click>=8.1.0
+
+# Web 框架
+Flask>=3.0.0
+Werkzeug>=3.0.0
+
+# PDF 解析
+PyPDF2>=3.0.0
+pdfplumber>=0.11.0

@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 剧本评测系统</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-600: #4b5563;
+            --gray-800: #1f2937;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            color: white;
+        }
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin-bottom: 20px;
+        }
+        .upload-area {
+            border: 3px dashed var(--gray-200);
+            border-radius: 12px;
+            padding: 50px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover, .upload-area.dragover {
+            border-color: var(--primary);
+            background: var(--gray-50);
+        }
+        .upload-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+        .upload-text {
+            font-size: 1.2rem;
+            color: var(--gray-800);
+            margin-bottom: 8px;
+        }
+        .upload-hint {
+            color: var(--gray-600);
+            font-size: 0.9rem;
+        }
+        .section-title {
+            font-size: 1.2rem;
+            font-weight: 600;
+            margin: 25px 0 15px;
+            color: var(--gray-800);
+        }
+        .dimensions-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+        .dimension-item {
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 12px 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .dimension-item:hover {
+            border-color: var(--primary);
+            background: var(--gray-50);
+        }
+        .dimension-item.selected {
+            border-color: var(--primary);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        .checkbox {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--gray-200);
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .dimension-item.selected .checkbox {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        .checkbox::after {
+            content: '✓';
+            color: white;
+            font-size: 14px;
+            display: none;
+        }
+        .dimension-item.selected .checkbox::after {
+            display: block;
+        }
+        .dimension-info {
+            flex: 1;
+        }
+        .dimension-name {
+            font-weight: 600;
+            color: var(--gray-800);
+            font-size: 0.95rem;
+        }
+        .dimension-desc {
+            font-size: 0.8rem;
+            color: var(--gray-600);
+            margin-top: 2px;
+        }
+        .dimension-weight {
+            font-size: 0.7rem;
+            color: var(--gray-600);
+            background: var(--gray-200);
+            padding: 2px 8px;
+            border-radius: 8px;
+        }
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .btn {
+            border: none;
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+            justify-content: center;
+            padding: 16px;
+            font-size: 1.1rem;
+        }
+        .btn-primary:hover:not(:disabled) {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .btn-secondary {
+            background: var(--gray-100);
+            color: var(--gray-800);
+        }
+        .btn-secondary:hover {
+            background: var(--gray-200);
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+        }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid var(--gray-200);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        .progress-bar {
+            height: 8px;
+            background: var(--gray-200);
+            border-radius: 4px;
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary), #818cf8);
+            transition: width 0.3s;
+        }
+        .score-display {
+            text-align: center;
+            padding: 30px 0;
+        }
+        .score-circle {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--primary), #818cf8);
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            box-shadow: 0 10px 30px rgba(99, 102, 241, 0.3);
+        }
+        .score-value {
+            font-size: 3.5rem;
+            font-weight: 700;
+            line-height: 1;
+        }
+        .score-max {
+            font-size: 1.2rem;
+            opacity: 0.8;
+        }
+        .grade-badge {
+            display: inline-block;
+            padding: 10px 20px;
+            border-radius: 12px;
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: white;
+        }
+        .grade-S { background: linear-gradient(135deg, #fbbf24, #f59e0b); }
+        .grade-A { background: linear-gradient(135deg, #10b981, #059669); }
+        .grade-B { background: linear-gradient(135deg, #6366f1, #4f46e5); }
+        .grade-C { background: linear-gradient(135deg, #f97316, #ea580c); }
+        .grade-D { background: linear-gradient(135deg, #ef4444, #dc2626); }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--gray-200);
+        }
+        th {
+            background: var(--gray-100);
+            font-weight: 600;
+            color: var(--gray-600);
+        }
+        .dimension-card {
+            border: 1px solid var(--gray-200);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 15px;
+        }
+        .dimension-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .dimension-card-title {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        .dimension-card-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        .list-item {
+            padding: 8px 0;
+            padding-left: 25px;
+            position: relative;
+            line-height: 1.6;
+        }
+        .list-item::before {
+            content: '✅';
+            position: absolute;
+            left: 0;
+        }
+        .list-item.weak::before {
+            content: '⚠️';
+        }
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            z-index: 1000;
+            max-width: 500px;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+        .toast.error {
+            border-left: 4px solid var(--danger);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--gray-600);
+        }
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    {% raw %}
+    <div id="app">
+        <div class="container">
+            <div class="header">
+                <h1>🎬 AI 剧本评测系统</h1>
+                <p>基于豆包 seed-1.8 模型的短剧剧本质量评测</p>
+            </div>
+
+            <!-- 上传页面 -->
+            <div class="card" v-if="stage === 'upload'">
+                <div class="upload-area"
+                     :class="{ dragover: isDragOver }"
+                     @click="selectFile"
+                     @dragover.prevent="isDragOver = true"
+                     @dragleave.prevent="isDragOver = false"
+                     @drop.prevent="handleDrop">
+                    <div class="upload-icon">📁</div>
+                    <div class="upload-text">{{ fileName || '拖拽剧本文件到此处' }}</div>
+                    <div class="upload-hint">或点击选择文件（支持 .txt 格式，最大 50MB）</div>
+                    <input type="file" ref="fileInput" @change="onFileChange" accept=".txt" hidden>
+                </div>
+
+                <div class="section-title" v-if="dimensions.length > 0">
+                    📊 选择评测维度
+                </div>
+                <div class="dimensions-grid" v-if="dimensions.length > 0">
+                    <div class="dimension-item"
+                         v-for="dim in dimensions"
+                         :key="dim.key"
+                         :class="{ selected: selectedDimensions.includes(dim.key) }"
+                         @click="toggleDimension(dim.key)">
+                        <div class="checkbox"></div>
+                        <div class="dimension-info">
+                            <div class="dimension-name">{{ dim.name }}</div>
+                            <div class="dimension-desc">{{ dim.description }}</div>
+                        </div>
+                        <span class="dimension-weight">{{ (dim.weight * 100).toFixed(0) }}%</span>
+                    </div>
+                </div>
+
+                <div class="btn-group" v-if="dimensions.length > 0">
+                    <button class="btn btn-secondary" @click="selectAll">全选</button>
+                    <button class="btn btn-secondary" @click="clearAll">清空</button>
+                </div>
+
+                <button class="btn btn-primary"
+                        v-if="file"
+                        @click="evaluate"
+                        :disabled="selectedDimensions.length === 0 || evaluating">
+                    🚀 开始评测
+                </button>
+            </div>
+
+            <!-- 加载中 -->
+            <div class="card" v-if="stage === 'loading'">
+                <div class="loading">
+                    <div class="spinner"></div>
+                    <h3>{{ loadingText }}</h3>
+                    <div class="progress-bar">
+                        <div class="progress-fill" :style="{ width: progress + '%' }"></div>
+                    </div>
+                    <p style="color: var(--gray-600); margin-top: 10px;">{{ progressText }}</p>
+                </div>
+            </div>
+
+            <!-- 评测结果 -->
+            <div class="card" v-if="stage === 'results' && result">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <h2>📊 评测结果</h2>
+                    <span class="grade-badge" :class="'grade-' + result.overall.grade">
+                        {{ result.overall.grade }} 级
+                    </span>
+                </div>
+
+                <div class="score-display">
+                    <div class="score-circle">
+                        <div class="score-value">{{ result.overall.total_score }}</div>
+                        <div class="score-max">/ 100</div>
+                    </div>
+                </div>
+
+                <h3 style="margin: 30px 0 15px;">📈 分项得分</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>维度</th>
+                            <th>得分</th>
+                            <th>权重</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="item in result.overall.details" :key="item.dimension">
+                            <td>{{ item.dimension }}</td>
+                            <td>{{ item.score }} / {{ item.max_score }}</td>
+                            <td>{{ (item.weight * 100).toFixed(0) }}%</td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <h3 style="margin: 30px 0 15px;">📝 详细分析</h3>
+                <div class="dimension-card"
+                     v-for="(dim, key) in result.dimensions"
+                     :key="key"
+                     v-if="!dim.error">
+                    <div class="dimension-card-header">
+                        <div class="dimension-card-title">{{ dim.dimension_name }}</div>
+                        <div class="dimension-card-score">{{ dim.total_score }} / {{ dim.max_score }}</div>
+                    </div>
+
+                    <div v-if="dim.strengths && dim.strengths.length" style="margin-top: 15px;">
+                        <strong>✅ 优点：</strong>
+                        <div class="list-item" v-for="(item, i) in dim.strengths.slice(0, 3)" :key="'s'+i">
+                            {{ item }}
+                        </div>
+                    </div>
+
+                    <div v-if="dim.weaknesses && dim.weaknesses.length" style="margin-top: 15px;">
+                        <strong>⚠️ 待改进：</strong>
+                        <div class="list-item weak" v-for="(item, i) in dim.weaknesses.slice(0, 3)" :key="'w'+i">
+                            {{ item }}
+                        </div>
+                    </div>
+
+                    <div v-if="dim.suggestions && dim.suggestions.length" style="margin-top: 15px;">
+                        <strong>💡 建议：</strong>
+                        <div style="padding-left: 20px;">
+                            <div v-for="(item, i) in dim.suggestions.slice(0, 3)" :key="'sg'+i" style="margin: 8px 0;">
+                                {{ i + 1 }}. {{ item }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="btn-group" style="margin-top: 30px;">
+                    <button class="btn btn-secondary" @click="reset">🔄 评测新剧本</button>
+                </div>
+            </div>
+
+            <!-- 错误提示 -->
+            <div class="toast error" v-if="error">
+                <span>❌</span>
+                <span>{{ error }}</span>
+            </div>
+        </div>
+    </div>
+    {% endraw %}
+
+    <script>
+        const { createApp } = Vue
+
+        createApp({
+            data() {
+                return {
+                    stage: 'upload',
+                    dimensions: [],
+                    selectedDimensions: [],
+                    file: null,
+                    fileName: '',
+                    isDragOver: false,
+                    evaluating: false,
+                    loadingText: '正在评测中...',
+                    progress: 0,
+                    progressText: '准备中...',
+                    loadingSteps: [
+                        '正在分析剧本内容...',
+                        '正在评估故事结构...',
+                        '正在分析人物塑造...',
+                        '正在评估对话质量...',
+                        '正在分析短剧特质...',
+                        '正在评估商业价值...',
+                        '正在生成评测报告...'
+                    ],
+                    result: null,
+                    error: ''
+                }
+            },
+            methods: {
+                async loadDimensions() {
+                    try {
+                        const res = await axios.get('/api/dimensions')
+                        this.dimensions = res.data.dimensions
+                        this.selectedDimensions = this.dimensions.map(d => d.key)
+                    } catch (e) {
+                        this.showError('加载评测维度失败')
+                    }
+                },
+                selectFile() {
+                    this.$refs.fileInput.click()
+                },
+                onFileChange(e) {
+                    const file = e.target.files[0]
+                    this.setFile(file)
+                },
+                handleDrop(e) {
+                    this.isDragOver = false
+                    const file = e.dataTransfer.files[0]
+                    this.setFile(file)
+                },
+                setFile(file) {
+                    if (!file) return
+                    const ext = file.name.split('.').pop().toLowerCase()
+                    if (ext !== 'txt') {
+                        this.showError('只支持 .txt 格式的文件')
+                        return
+                    }
+                    if (file.size > 50 * 1024 * 1024) {
+                        this.showError('文件大小不能超过 50MB')
+                        return
+                    }
+                    this.file = file
+                    this.fileName = file.name
+                },
+                toggleDimension(key) {
+                    const idx = this.selectedDimensions.indexOf(key)
+                    if (idx > -1) {
+                        this.selectedDimensions.splice(idx, 1)
+                    } else {
+                        this.selectedDimensions.push(key)
+                    }
+                },
+                selectAll() {
+                    this.selectedDimensions = this.dimensions.map(d => d.key)
+                },
+                clearAll() {
+                    this.selectedDimensions = []
+                },
+                async evaluate() {
+                    if (!this.file) {
+                        this.showError('请先选择剧本文件')
+                        return
+                    }
+                    if (this.selectedDimensions.length === 0) {
+                        this.showError('请至少选择一个评测维度')
+                        return
+                    }
+
+                    this.stage = 'loading'
+                    this.evaluating = true
+                    this.progress = 0
+                    this.error = ''
+
+                    // 模拟进度
+                    let step = 0
+                    const progressInterval = setInterval(() => {
+                        if (step < this.loadingSteps.length) {
+                            this.progressText = this.loadingSteps[step]
+                            this.progress = ((step + 1) / this.loadingSteps.length) * 90
+                            step++
+                        }
+                    }, 1000)
+
+                    try {
+                        const formData = new FormData()
+                        formData.append('file', this.file)
+                        formData.append('dimensions', this.selectedDimensions.join(','))
+
+                        const res = await axios.post('/api/evaluate', formData, {
+                            headers: { 'Content-Type': 'multipart/form-data' }
+                        })
+
+                        clearInterval(progressInterval)
+                        this.progress = 100
+
+                        if (res.data.success) {
+                            this.result = res.data.result
+                            this.stage = 'results'
+                        } else {
+                            this.showError(res.data.error || '评测失败')
+                            this.stage = 'upload'
+                        }
+                    } catch (e) {
+                        clearInterval(progressInterval)
+                        let errorMsg = e.response?.data?.error || '评测失败，请稍后重试'
+                        // 如果是 PDF 解析错误，显示更详细的信息
+                        if (errorMsg.includes('PDF')) {
+                            errorMsg += '\n\n建议：请确保 PDF 文件包含可提取的文本（非扫描图片），或尝试使用 TXT 格式。'
+                        }
+                        this.showError(errorMsg)
+                        this.stage = 'upload'
+                    } finally {
+                        this.evaluating = false
+                    }
+                },
+                reset() {
+                    this.stage = 'upload'
+                    this.file = null
+                    this.fileName = ''
+                    this.result = null
+                    this.progress = 0
+                    this.error = ''
+                    this.$refs.fileInput.value = ''
+                },
+                showError(msg) {
+                    this.error = msg
+                    // 根据错误消息长度动态设置显示时间
+                    const duration = Math.max(10000, msg.length * 50)
+                    setTimeout(() => {
+                        this.error = ''
+                    }, duration)
+                }
+            },
+            mounted() {
+                this.loadDimensions()
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
