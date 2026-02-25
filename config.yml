@@ -41,6 +41,6 @@ output:
 
 # 剧本处理配置
 script:
-  max_length: 50000  # 最大字符数
+  max_length: 200000  # 最大字符数（20万）
   chunk_size: 10000  # 分段大小（用于长剧本）
   encoding: "utf-8"

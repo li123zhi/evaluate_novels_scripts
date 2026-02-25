@@ -85,11 +85,168 @@ class ScriptEvaluator:
             with open(script_path, 'r', encoding='utf-8', errors='ignore') as f:
                 content = f.read()
 
+        # 预处理剧本内容
+        content = self._preprocess_script(content)
+
         # 截断过长的剧本
         if len(content) > max_length:
             content = content[:max_length] + "\n\n[内容过长，已截断...]"
 
         return content
+
+    def _preprocess_script(self, content: str) -> str:
+        """
+        预处理剧本内容，优化格式
+
+        Args:
+            content: 原始剧本内容
+
+        Returns:
+            处理后的剧本内容
+        """
+        import re
+
+        # 1. 移除 BOM 标记
+        content = content.replace('\ufeff', '')
+
+        # 2. 统一换行符
+        content = content.replace('\r\n', '\n').replace('\r', '\n')
+
+        # 3. 移除全角空格
+        content = content.replace('\u3000', ' ')
+
+        # 4. 移除连续的空行（保留最多一个空行）
+        content = re.sub(r'\n\s*\n\s*\n+', '\n\n', content)
+
+        # 5. 智能识别剧本格式并添加结构化标记
+        script_info = self._analyze_script_structure(content)
+
+        # 如果识别为短剧剧本，添加格式说明
+        if script_info['is_short_drama']:
+            # 在开头添加结构说明，帮助 AI 更好理解
+            header = f"""# 短剧剧本结构分析
+
+标题：{script_info.get('title', '未知')}
+总集数：{script_info.get('total_episodes', '未知')}
+人物数量：{script_info.get('character_count', '未知')}
+
+包含部分：
+"""
+            if script_info.get('has_style'):
+                header += "- 剧本风格设定\n"
+            if script_info.get('has_summary'):
+                header += "- 故事概要\n"
+            if script_info.get('has_characters'):
+                header += "- 人物设定\n"
+            if script_info.get('has_plot_outline'):
+                header += "- 剧情大纲\n"
+            if script_info.get('has_episodes'):
+                header += "- 分集剧本\n"
+
+            header += f"\n--- 剧本内容 ---\n\n"
+
+            # 只在内容足够长时添加头部（避免影响短剧本）
+            if len(content) > 2000:
+                content = header + content
+
+        return content.strip()
+
+    def _analyze_script_structure(self, content: str) -> dict:
+        """
+        分析剧本结构，识别是否为短剧剧本
+
+        Args:
+            content: 剧本内容
+
+        Returns:
+            结构分析结果字典
+        """
+        import re
+
+        result = {
+            'is_short_drama': False,
+            'title': None,
+            'total_episodes': 0,
+            'character_count': 0,
+            'has_style': False,
+            'has_summary': False,
+            'has_characters': False,
+            'has_plot_outline': False,
+            'has_episodes': False
+        }
+
+        lines = content.split('\n')
+
+        # 1. 检测标题（第一行通常是标题）
+        if len(lines) > 0:
+            first_line = lines[0].strip()
+            if len(first_line) < 50 and not any(char in first_line for char in ['【', '】', ':', '：']):
+                result['title'] = first_line
+
+        # 2. 检测剧本风格
+        style_patterns = ['剧本风格', '风格', '类型', '改编']
+        result['has_style'] = any(any(pattern in line for pattern in style_patterns) for line in lines[:20])
+
+        # 3. 检测故事概要
+        summary_patterns = ['故事概要', '剧情简介', '内容简介', '梗概']
+        result['has_summary'] = any(any(pattern in line for pattern in summary_patterns) for line in lines[:30])
+
+        # 4. 检测人物设定
+        character_patterns = ['人物设定', '角色介绍', '主要人物', '人物小传']
+        result['has_characters'] = any(any(pattern in line for pattern in character_patterns) for line in lines[:50])
+
+        # 统计人物数量
+        if result['has_characters']:
+            # 查找人物设定块
+            in_character_section = False
+            for line in lines:
+                if any(pattern in line for pattern in character_patterns):
+                    in_character_section = True
+                    continue
+                if in_character_section:
+                    # 检测人物条目（通常是 - 开头或者名字 - 描述格式）
+                    if line.strip() and not line.startswith(' '):
+                        if line[0] in '-•●○':
+                            result['character_count'] += 1
+                        elif ' - ' in line or '——' in line:
+                            result['character_count'] += 1
+                    # 跳出人物设定块
+                    if any(keyword in line for keyword in ['剧情', '分集', 'opening', 'development']):
+                        break
+
+        # 5. 检测剧情大纲
+        plot_patterns = ['剧情大纲', '故事线', '结构', 'opening', 'development', 'climax', 'ending']
+        result['has_plot_outline'] = any(any(pattern in line.lower() for pattern in plot_patterns) for line in lines)
+
+        # 6. 检测分集剧本
+        episode_patterns = [
+            r'^\d+\s*$',  # 单独的数字（集数）
+            r'【时长】',  # 时长标记
+            r'【场景】',  # 场景标记
+            r'分集剧本',  # 分集剧本标题
+            r'^第\d+集'  # 第X集
+        ]
+
+        episode_count = 0
+        for line in lines:
+            if any(re.match(pattern, line.strip()) for pattern in episode_patterns):
+                episode_count += 1
+
+        result['has_episodes'] = episode_count > 3
+        result['total_episodes'] = episode_count
+
+        # 7. 判断是否为短剧剧本（至少满足3个特征）
+        feature_count = sum([
+            result['has_style'],
+            result['has_summary'],
+            result['has_characters'],
+            result['has_plot_outline'],
+            result['has_episodes']
+        ])
+
+        result['is_short_drama'] = feature_count >= 3
+
+        return result
 
     def _evaluate_dimension(
         self,
@@ -116,16 +273,23 @@ class ScriptEvaluator:
         dimension_name = self.dimensions[dimension].get('name', dimension)
         print(f"\n正在评测维度: {dimension_name}...")
 
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"开始评测维度: {dimension_name} ({dimension})")
+
         try:
             result = self.api_client.chat_with_json_response(prompt)
             # 验证返回结果是否为字典
             if not isinstance(result, dict):
                 raise ValueError(f"API 返回结果不是字典类型，而是 {type(result).__name__}: {result}")
+            logger.info(f"维度 {dimension_name} 评测成功，得分: {result.get('total_score', 0)}")
             return result
         except Exception as e:
             print(f"评测维度 {dimension} 时出错: {str(e)}")
+            logger.error(f"评测维度 {dimension} 失败: {str(e)}")
             import traceback
             print(traceback.format_exc())
+            logger.error(traceback.format_exc())
             # 返回错误结果
             return {
                 "dimension": dimension,
@@ -152,12 +316,19 @@ class ScriptEvaluator:
         Returns:
             完整评测结果
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         # 确定要评测的维度
         if dimensions is None:
             dimensions = list(self.dimensions.keys())
 
+        logger.info(f"开始评测，共 {len(dimensions)} 个维度: {dimensions}")
+
         # 准备剧本内容
+        logger.info("正在准备剧本内容...")
         script_content = self._prepare_script_content(script_path)
+        logger.info(f"剧本内容准备完成，长度: {len(script_content)} 字符")
 
         # 获取剧本信息
         script_name = Path(script_path).stem
@@ -173,12 +344,16 @@ class ScriptEvaluator:
         if show_progress:
             dimension_iter = tqdm(dimensions, desc="评测进度")
 
-        for dimension in dimension_iter:
+        for i, dimension in enumerate(dimension_iter, 1):
+            logger.info(f"开始评测第 {i}/{len(dimensions)} 个维度: {dimension}")
             dimension_result = self._evaluate_dimension(dimension, script_content)
             result["dimensions"][dimension] = dimension_result
+            logger.info(f"维度 {dimension} 评测完成")
 
         # 计算综合评分
+        logger.info("正在计算综合评分...")
         result["overall"] = self._calculate_overall_score(result["dimensions"])
+        logger.info(f"评测全部完成，总分: {result['overall'].get('total_score', 0)}")
 
         return result
 

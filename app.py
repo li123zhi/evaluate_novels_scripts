@@ -101,16 +101,96 @@ def extract_text_from_file(file_path, file_ext):
         return extract_text_from_pdf(file_path)
     else:
         # txt 文件读取，尝试多种编码
+        text = None
         encodings = ['utf-8', 'gbk', 'gb2312', 'latin-1']
         for encoding in encodings:
             try:
                 with open(file_path, 'r', encoding=encoding) as f:
-                    return f.read()
+                    text = f.read()
+                break
             except UnicodeDecodeError:
                 continue
+
         # 如果都失败，使用 errors='ignore'
-        with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
-            return f.read()
+        if text is None:
+            with open(file_path, 'r', encoding='utf-8', errors='ignore') as f:
+                text = f.read()
+
+        # 清理和规范化文本
+        text = clean_script_text(text)
+        return text
+
+
+def clean_script_text(text: str) -> str:
+    """
+    清理和规范化剧本文本
+
+    Args:
+        text: 原始文本
+
+    Returns:
+        清理后的文本
+    """
+    import re
+
+    # 1. 移除 BOM 标记
+    text = text.replace('\ufeff', '')
+
+    # 2. 统一换行符
+    text = text.replace('\r\n', '\n').replace('\r', '\n')
+
+    # 3. 移除连续的空行（保留最多一个空行）
+    text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+
+    # 4. 清理行首行尾空白
+    lines = [line.rstrip() for line in text.split('\n')]
+    text = '\n'.join(lines)
+
+    # 5. 移除全角空格和半角空格的混合
+    text = text.replace('\u3000', ' ')  # 全角空格转半角
+
+    # 6. 移除不可见字符（保留换行、制表符、常用标点）
+    # 保留中文、英文、数字、常用标点、换行符
+    text = re.sub(r'[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9\s\.,!?;:：，。！？；、\(\)\[\]""''《》·—·…～\-–—/=@#\$%\^&\*\+\|\{\}\<\>\n\r\t]', '', text)
+
+    # 7. 修复常见的格式问题
+    # 修复括号不匹配问题（移除孤立的括号）
+    text = re.sub(r'【([^】]*$)', r'【\1】', text)  # 缺失的右括号
+
+    # 8. 移除过长的单行（可能是格式错误）
+    lines = text.split('\n')
+    cleaned_lines = []
+    for line in lines:
+        # 如果单行超过500字符且没有标点，可能是格式错误，尝试分割
+        if len(line) > 500 and not any(punct in line[-100:] for punct in ['。', '！', '？', '.', '!', '?', '】']):
+            # 尝试按标点分割
+            parts = re.split(r'([。！？\.!?])', line)
+            if len(parts) > 1:
+                # 重组句子
+                new_line = ''
+                for i in range(0, len(parts) - 1, 2):
+                    if i + 1 < len(parts):
+                        new_line += parts[i] + parts[i + 1] + '\n'
+                    else:
+                        new_line += parts[i]
+                if parts[-1]:
+                    new_line += parts[-1]
+                cleaned_lines.append(new_line.strip())
+            else:
+                cleaned_lines.append(line)
+        else:
+            cleaned_lines.append(line)
+
+    text = '\n'.join(cleaned_lines)
+
+    # 9. 最终清理多余的空行
+    text = re.sub(r'\n\s*\n\s*\n+', '\n\n', text)
+
+    # 10. 记录清理信息
+    original_len = len(text)
+    logger.info(f"文本清理完成: 原始 {original_len} 字符 -> 最终 {len(text)} 字符")
+
+    return text.strip()
 
 
 @app.route('/')
@@ -214,8 +294,10 @@ def evaluate():
                 raise RuntimeError(f"PDF 文件解析失败: {str(e)}")
 
         # 执行评测
+        logger.info(f"开始评测剧本: {filename}, 维度: {dimension_list}")
         evaluator = ScriptEvaluator()
         result = evaluator.evaluate(actual_script_path, dimensions=dimension_list, show_progress=False)
+        logger.info(f"评测完成，准备生成报告")
 
         # 生成报告
         report_generator = ReportGenerator(output_dir=app.config['OUTPUT_FOLDER'])
@@ -294,6 +376,117 @@ def get_config():
             'success': False,
             'error': str(e)
         }), 500
+
+
+@app.route('/api/improve', methods=['POST'])
+def improve_script():
+    """根据评测建议改进剧本"""
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': '未请求数据'
+            }), 400
+
+        original_script_name = data.get('original_script_name', '剧本')
+        suggestions = data.get('suggestions', {})
+        evaluation_result = data.get('evaluation_result', {})
+
+        # 构建 AI 提示词
+        prompt = build_improve_prompt(original_script_name, suggestions, evaluation_result)
+
+        logger.info(f"开始根据建议改进剧本: {original_script_name}")
+
+        # 调用 API 生成改进后的剧本
+        from src.api_client import DoubaoAPIClient
+        api_client = DoubaoAPIClient()
+
+        system_prompt = """你是一位专业的短剧编剧，擅长根据反馈意见改进剧本。
+请根据提供的修改建议，重新编写或改进原剧本的相应部分。
+改进后的剧本应该：
+1. 保持原有的风格和特色
+2. 针对每个建议进行具体改进
+3. 保持剧本的完整性和连贯性
+4. 输出完整的改进后剧本，包含标题、人物设定、分集剧本等所有部分"""
+
+        try:
+            improved_script = api_client.chat(prompt, system_prompt)
+
+            logger.info(f"剧本改进成功，生成 {len(improved_script)} 字符")
+
+            return jsonify({
+                'success': True,
+                'improved_script': improved_script
+            })
+
+        except Exception as e:
+            logger.error(f"API 调用失败: {str(e)}")
+            logger.error(traceback.format_exc())
+            return jsonify({
+                'success': False,
+                'error': f'生成改进剧本失败: {str(e)}'
+            }), 500
+
+    except Exception as e:
+        logger.error(f"Error in improve_script: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e),
+            'trace': traceback.format_exc()
+        }), 500
+
+
+def build_improve_prompt(script_name, suggestions, evaluation_result):
+    """
+    构建剧本改进的提示词
+
+    Args:
+        script_name: 原剧本名称
+        suggestions: 各维度的修改建议
+        evaluation_result: 完整的评测结果
+
+    Returns:
+        完整的提示词
+    """
+    prompt = f"""请根据以下评测建议，改进剧本《{script_name}》：
+
+## 修改建议
+
+"""
+
+    # 添加各维度的修改建议
+    for dim_key, dim_data in suggestions.items():
+        dimension_name = dim_data.get('dimension_name', dim_key)
+        dim_suggestions = dim_data.get('suggestions', [])
+
+        if dim_suggestions:
+            prompt += f"\n### {dimension_name}\n\n"
+            for i, suggestion in enumerate(dim_suggestions, 1):
+                prompt += f"{i}. {suggestion}\n"
+            prompt += "\n"
+
+    # 添加原剧本的总体信息（如果有的话）
+    if evaluation_result.get('overall'):
+        overall = evaluation_result['overall']
+        prompt += f"\n## 原剧本评测概要\n\n"
+        prompt += f"- 总分：{overall.get('total_score', 0)}/{overall.get('max_score', 100)}\n"
+        prompt += f"- 等级：{overall.get('grade', 'N/A')}\n\n"
+
+    prompt += """
+请根据以上建议，输出完整的改进后剧本。剧本格式应包含：
+1. 标题
+2. 剧本风格
+3. 故事概要
+4. 人物设定
+5. 剧情大纲
+6. 分集剧本（完整的每一集内容）
+
+请确保改进后的剧本直接可用，格式规范。"""
+
+    return prompt
 
 
 if __name__ == '__main__':

@@ -70,10 +70,17 @@ class DoubaoAPIClient:
         Returns:
             API 响应数据
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         headers = {
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json"
         }
+
+        # 计算输入 token 大小（粗略估计）
+        total_chars = sum(len(msg.get('content', '')) for msg in messages)
+        logger.info(f"发起 API 请求，输入字符数: {total_chars}, 超时设置: {self.timeout}秒")
 
         payload = {
             "model": self.model_endpoint,
@@ -88,6 +95,7 @@ class DoubaoAPIClient:
 
         for attempt in range(self.max_retries):
             try:
+                logger.info(f"API 请求尝试 {attempt + 1}/{self.max_retries}")
                 response = requests.post(
                     self.api_url,
                     headers=headers,
@@ -95,20 +103,24 @@ class DoubaoAPIClient:
                     timeout=self.timeout
                 )
                 response.raise_for_status()
+                logger.info(f"API 请求成功，状态码: {response.status_code}")
                 return response.json()
 
             except requests.exceptions.Timeout:
+                logger.warning(f"API 请求超时（第 {attempt + 1} 次尝试）")
                 if attempt == self.max_retries - 1:
                     raise TimeoutError(f"API 请求超时（{self.timeout}秒）")
                 time.sleep(2 ** attempt)  # 指数退避
 
             except requests.exceptions.HTTPError as e:
+                logger.warning(f"API HTTP 错误: {e}")
                 if attempt == self.max_retries - 1:
                     error_detail = response.text if 'response' in locals() else str(e)
                     raise RuntimeError(f"API 请求失败: {error_detail}")
                 time.sleep(2 ** attempt)
 
             except requests.exceptions.RequestException as e:
+                logger.warning(f"API 网络错误: {e}")
                 if attempt == self.max_retries - 1:
                     raise RuntimeError(f"网络请求错误: {str(e)}")
                 time.sleep(2 ** attempt)

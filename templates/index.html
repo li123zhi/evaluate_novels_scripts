@@ -335,6 +335,142 @@
             font-size: 4rem;
             margin-bottom: 15px;
         }
+        /* 可编辑文本区域 */
+        .editable-suggestion {
+            width: 100%;
+            min-height: 80px;
+            padding: 12px;
+            border: 1px solid var(--gray-300);
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: vertical;
+            font-family: inherit;
+            margin-top: 8px;
+            background: #fafafa;
+        }
+        .editable-suggestion:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: white;
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+        }
+        /* 改进按钮 */
+        .btn-improve {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-improve:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
+        }
+        .btn-improve:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        /* 对话框样式 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            animation: fadeIn 0.3s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 85vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: slideUp 0.3s;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .modal-header {
+            padding: 20px 24px;
+            border-bottom: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .modal-header h3 {
+            margin: 0;
+            font-size: 20px;
+        }
+        .modal-close {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+        .modal-close:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .modal-body {
+            padding: 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .modal-footer {
+            padding: 16px 24px;
+            border-top: 1px solid var(--gray-200);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+            background: #f8f9fa;
+        }
+        .script-preview {
+            background: #f8f9fa;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            padding: 20px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.8;
+            white-space: pre-wrap;
+            max-height: 500px;
+            overflow-y: auto;
+            color: #333;
+        }
+        .script-preview h1 { font-size: 24px; margin: 0 0 16px; color: #667eea; }
+        .script-preview h2 { font-size: 18px; margin: 16px 0 8px; color: #764ba2; }
+        .script-preview p { margin: 8px 0; }
     </style>
 </head>
 <body>
@@ -462,17 +598,27 @@
                     </div>
 
                     <div v-if="dim.suggestions && dim.suggestions.length" style="margin-top: 15px;">
-                        <strong>💡 建议：</strong>
-                        <div style="padding-left: 20px;">
-                            <div v-for="(item, i) in dim.suggestions.slice(0, 3)" :key="'sg'+i" style="margin: 8px 0;">
-                                {{ i + 1 }}. {{ item }}
-                            </div>
+                        <strong>💡 修改建议（可编辑）：</strong>
+                        <div style="padding-left: 20px; margin-top: 8px;">
+                            <textarea
+                                v-for="(item, i) in dim.suggestions"
+                                :key="'sg'+i"
+                                class="editable-suggestion"
+                                v-model="dim.suggestions[i]"
+                                :data-dimension="key"
+                                :data-index="i"
+                                placeholder="输入修改建议..."
+                            ></textarea>
                         </div>
                     </div>
                 </div>
 
                 <div class="btn-group" style="margin-top: 30px;">
-                    <button class="btn btn-secondary" @click="reset">🔄 评测新剧本</button>
+                    <button class="btn btn-improve" @click="improveScript" :disabled="improving">
+                        <span v-if="improving">⏳ 生成中...</span>
+                        <span v-else>✨ 根据建议改进剧本</span>
+                    </button>
+                    <button class="btn btn-secondary" @click="reset" style="margin-left: 12px;">🔄 评测新剧本</button>
                 </div>
             </div>
 
@@ -480,6 +626,28 @@
             <div class="toast error" v-if="error">
                 <span>❌</span>
                 <span>{{ error }}</span>
+            </div>
+
+            <!-- 改进剧本对话框 -->
+            <div class="modal-overlay" v-if="showModal" @click.self="closeModal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3>✨ 改进后的剧本</h3>
+                        <button class="modal-close" @click="closeModal">×</button>
+                    </div>
+                    <div class="modal-body">
+                        <div v-if="improvedScript" class="script-preview" v-html="formatScript(improvedScript)"></div>
+                        <div v-else-if="improving" style="text-align: center; padding: 40px;">
+                            <div style="font-size: 40px; margin-bottom: 16px;">⏳</div>
+                            <p>正在根据建议生成改进剧本...</p>
+                            <p style="color: var(--gray-600); font-size: 14px; margin-top: 8px;">这可能需要几分钟时间</p>
+                        </div>
+                    </div>
+                    <div class="modal-footer" v-if="improvedScript">
+                        <button class="btn btn-secondary" @click="closeModal">关闭</button>
+                        <button class="btn btn-improve" @click="downloadImprovedScript">📥 下载剧本</button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -511,7 +679,12 @@
                         '正在生成评测报告...'
                     ],
                     result: null,
-                    error: ''
+                    error: '',
+                    // 新增：改进剧本相关
+                    improving: false,
+                    showModal: false,
+                    improvedScript: null,
+                    originalScriptContent: null
                 }
             },
             methods: {
@@ -579,27 +752,35 @@
                     this.progress = 0
                     this.error = ''
 
-                    // 模拟进度
+                    // 模拟进度 - 持续显示直到真正完成
                     let step = 0
                     const progressInterval = setInterval(() => {
+                        // 循环显示进度步骤，直到真正完成
                         if (step < this.loadingSteps.length) {
                             this.progressText = this.loadingSteps[step]
-                            this.progress = ((step + 1) / this.loadingSteps.length) * 90
-                            step++
+                        } else {
+                            // 最后一个步骤保持显示
+                            this.progressText = '正在生成评测报告...'
                         }
-                    }, 1000)
+                        // 进度逐渐增加到 95%
+                        this.progress = Math.min(95, ((step + 1) / this.loadingSteps.length) * 90)
+                        step++
+                    }, 2000)  // 每2秒更新一次
 
                     try {
                         const formData = new FormData()
                         formData.append('file', this.file)
                         formData.append('dimensions', this.selectedDimensions.join(','))
 
+                        this.progressText = '正在上传剧本...'
                         const res = await axios.post('/api/evaluate', formData, {
-                            headers: { 'Content-Type': 'multipart/form-data' }
+                            headers: { 'Content-Type': 'multipart/form-data' },
+                            timeout: 600000  // 10分钟超时
                         })
 
                         clearInterval(progressInterval)
                         this.progress = 100
+                        this.progressText = '评测完成！'
 
                         if (res.data.success) {
                             this.result = res.data.result
@@ -610,7 +791,14 @@
                         }
                     } catch (e) {
                         clearInterval(progressInterval)
-                        let errorMsg = e.response?.data?.error || '评测失败，请稍后重试'
+                        let errorMsg = '评测失败，请稍后重试'
+
+                        if (e.code === 'ECONNABORTED') {
+                            errorMsg = '评测请求超时（超过10分钟）。请尝试：\n1. 减少评测维度\n2. 缩短剧本长度\n3. 稍后重试'
+                        } else if (e.response?.data?.error) {
+                            errorMsg = e.response.data.error
+                        }
+
                         // 如果是 PDF 解析错误，显示更详细的信息
                         if (errorMsg.includes('PDF')) {
                             errorMsg += '\n\n建议：请确保 PDF 文件包含可提取的文本（非扫描图片），或尝试使用 TXT 格式。'
@@ -637,6 +825,90 @@
                     setTimeout(() => {
                         this.error = ''
                     }, duration)
+                },
+                // 改进剧本
+                async improveScript() {
+                    if (!this.result) return
+
+                    this.improving = true
+                    this.showModal = true
+                    this.improvedScript = null
+
+                    try {
+                        // 收集所有维度的修改建议
+                        const suggestions = {}
+                        for (const [key, dim] of Object.entries(this.result.dimensions)) {
+                            if (dim.suggestions && dim.suggestions.length > 0) {
+                                suggestions[key] = {
+                                    dimension_name: dim.dimension_name,
+                                    suggestions: dim.suggestions
+                                }
+                            }
+                        }
+
+                        const res = await axios.post('/api/improve', {
+                            original_script_name: this.result.script_name,
+                            suggestions: suggestions,
+                            evaluation_result: this.result
+                        }, {
+                            timeout: 600000  // 10分钟超时
+                        })
+
+                        if (res.data.success) {
+                            this.improvedScript = res.data.improved_script
+                        } else {
+                            this.showError(res.data.error || '改进剧本失败')
+                            this.showModal = false
+                        }
+                    } catch (e) {
+                        this.showError(e.response?.data?.error || '改进剧本失败，请稍后重试')
+                        this.showModal = false
+                    } finally {
+                        this.improving = false
+                    }
+                },
+                // 关闭对话框
+                closeModal() {
+                    this.showModal = false
+                },
+                // 格式化剧本显示
+                formatScript(script) {
+                    if (!script) return ''
+                    // 转义 HTML
+                    let formatted = script
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                    // 将标题转换为 h1
+                    formatted = formatted.replace(/^(.+)$\n/m, '<h1>$1</h1>\n')
+                    // 将 ## 标题转换为 h2
+                    formatted = formatted.replace(/## (.+)/g, '<h2>$1</h2>')
+                    // 将 ** 加粗转换为 strong
+                    formatted = formatted.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                    // 保留换行
+                    formatted = formatted.replace(/\n/g, '<br>\n')
+                    return formatted
+                },
+                // 下载改进后的剧本
+                downloadImprovedScript() {
+                    if (!this.improvedScript) return
+
+                    // 创建 Blob
+                    const blob = new Blob([this.improvedScript], { type: 'text/plain;charset=utf-8' })
+                    const url = URL.createObjectURL(blob)
+
+                    // 创建下载链接
+                    const link = document.createElement('a')
+                    link.href = url
+                    link.download = `${this.result.script_name}_改进版.txt`
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+
+                    // 释放 URL
+                    URL.revokeObjectURL(url)
+
+                    this.showError('剧本下载成功！')
                 }
             },
             mounted() {

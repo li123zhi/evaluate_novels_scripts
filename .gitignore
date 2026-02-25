@@ -154,3 +154,8 @@ data/
 *.csv
 *.json
 *.xlsx
+
+# Project specific
+uploads/
+outputs/
+scripts/
