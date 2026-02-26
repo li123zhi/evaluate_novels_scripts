@@ -471,6 +471,20 @@
         .script-preview h1 { font-size: 24px; margin: 0 0 16px; color: #667eea; }
         .script-preview h2 { font-size: 18px; margin: 16px 0 8px; color: #764ba2; }
         .script-preview p { margin: 8px 0; }
+        /* 报告视图样式 */
+        .report-view h3 {
+            page-break-before: always;
+        }
+        .report-view table {
+            font-size: 0.95rem;
+        }
+        .report-view h4 {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        .report-view strong {
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -539,78 +553,337 @@
                 </div>
             </div>
 
-            <!-- 评测结果 -->
-            <div class="card" v-if="stage === 'results' && result">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                    <h2>📊 评测结果</h2>
-                    <span class="grade-badge" :class="'grade-' + result.overall.grade">
-                        {{ result.overall.grade }} 级
-                    </span>
+            <!-- 评测结果 - 详细报告格式 -->
+            <div class="card report-view" v-if="stage === 'results' && result">
+                <!-- 标题 -->
+                <div style="text-align: center; margin-bottom: 30px;">
+                    <h1 style="margin: 0 0 10px 0; font-size: 2rem; color: var(--gray-800);">📊 《{{ result.script_name || '剧本' }}》剧本评测报告</h1>
+                    <p style="color: var(--gray-600); margin: 5px 0;">生成时间: {{ result.timestamp || new Date().toLocaleString('zh-CN') }}</p>
                 </div>
 
-                <div class="score-display">
-                    <div class="score-circle">
-                        <div class="score-value">{{ result.overall.total_score }}</div>
-                        <div class="score-max">/ 100</div>
+                <!-- 综合评分 -->
+                <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 12px; text-align: center; margin-bottom: 30px; color: white;">
+                    <h2 style="margin: 0 0 15px 0; font-size: 1.3rem;">综合评分</h2>
+                    <div style="font-size: 2.5rem; font-weight: 700; margin-bottom: 10px;">
+                        {{ result.overall.total_score }}/100
+                    </div>
+                    <div style="font-size: 1.2rem;">
+                        等级: <strong>{{ result.overall.grade }}</strong>
                     </div>
                 </div>
 
-                <h3 style="margin: 30px 0 15px;">📈 分项得分</h3>
-                <table>
+                <!-- 分项评分表 -->
+                <h3 style="margin: 30px 0 15px; font-size: 1.5rem; color: var(--gray-800);">## 分项评分</h3>
+                <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px;">
                     <thead>
-                        <tr>
-                            <th>维度</th>
-                            <th>得分</th>
-                            <th>权重</th>
+                        <tr style="background: var(--gray-100);">
+                            <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--gray-200);">维度</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--gray-200);">得分</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--gray-200);">满分</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--gray-200);">权重</th>
+                            <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--gray-200);">加权得分</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="item in result.overall.details" :key="item.dimension">
-                            <td>{{ item.dimension }}</td>
-                            <td>{{ item.score }} / {{ item.max_score }}</td>
-                            <td>{{ (item.weight * 100).toFixed(0) }}%</td>
+                        <tr v-for="item in result.overall.details" :key="item.dimension" style="border-bottom: 1px solid var(--gray-200);">
+                            <td style="padding: 12px;">{{ item.dimension }}</td>
+                            <td style="padding: 12px; text-align: center;">
+                                <span :style="{ color: getScoreColor(item.score, item.max_score), fontWeight: 600 }">
+                                    {{ item.score }}
+                                </span>
+                            </td>
+                            <td style="padding: 12px; text-align: center;">{{ item.max_score }}</td>
+                            <td style="padding: 12px; text-align: center;">{{ (item.weight * 100).toFixed(0) }}%</td>
+                            <td style="padding: 12px; text-align: center;">{{ (item.score * item.weight).toFixed(2) }}</td>
                         </tr>
                     </tbody>
                 </table>
 
-                <h3 style="margin: 30px 0 15px;">📝 详细分析</h3>
-                <div class="dimension-card"
-                     v-for="(dim, key) in result.dimensions"
-                     :key="key"
-                     v-if="!dim.error">
-                    <div class="dimension-card-header">
-                        <div class="dimension-card-title">{{ dim.dimension_name }}</div>
-                        <div class="dimension-card-score">{{ dim.total_score }} / {{ dim.max_score }}</div>
+                <!-- 详细分析 -->
+                <h3 style="margin: 30px 0 15px; font-size: 1.5rem; color: var(--gray-800);">## 详细分析</h3>
+
+                <!-- 调试信息 -->
+                <div style="background: #fff3cd; padding: 10px; margin-bottom: 15px; border-radius: 8px; font-size: 11px;">
+                    <strong>DEBUG:</strong> stage={{ stage }}, has result={{ !!result }}, dimensions count={{ Object.keys(result?.dimensions || {}).length }}
+                </div>
+
+                <!-- 各维度详细分析 -->
+                <!-- 调试：显示所有维度 -->
+                <div v-for="(dim, key) in result.dimensions" :key="key" style="margin-bottom: 10px;">
+                    <div style="background: #e3f2fd; padding: 8px; font-size: 10px; border-radius: 4px;">
+                        DEBUG [{{ key }}]: dim exists={{ !!dim }}, has error={{ !!dim?.error }}, has sub_scores={{ !!dim?.sub_scores }}, name={{ dim?.dimension_name }}
                     </div>
 
-                    <div v-if="dim.strengths && dim.strengths.length" style="margin-top: 15px;">
-                        <strong>✅ 优点：</strong>
-                        <div class="list-item" v-for="(item, i) in dim.strengths.slice(0, 3)" :key="'s'+i">
-                            {{ item }}
+                    <div v-if="dim && !dim.error"
+                         style="margin-bottom: 40px; padding: 25px; border: 1px solid var(--gray-200); border-radius: 12px; background: white;">
+
+                    <!-- 维度标题 -->
+                    <h3 style="margin: 0 0 10px 0; font-size: 1.5rem; color: var(--gray-800); border-bottom: 2px solid var(--gray-200); padding-bottom: 10px;">
+                        ### {{ dim.dimension_name || key }}
+                    </h3>
+
+                    <div style="margin: 15px 0;">
+                        <strong>得分</strong>: <span :style="{ color: getScoreColor(dim.total_score, dim.max_score), fontSize: '1.2rem', fontWeight: 700 }">{{ dim.total_score }}</span> / {{ dim.max_score }}
+                    </div>
+
+                    <!-- 子项评分 -->
+                    <div v-if="dim.sub_scores" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 📊 子项评分</h4>
+                        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+                            <thead>
+                                <tr style="background: var(--gray-100);">
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--gray-200);">项目</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--gray-200);">得分</th>
+                                    <th style="padding: 12px; text-align: center; border-bottom: 2px solid var(--gray-200);">满分</th>
+                                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid var(--gray-200);">评价</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="(sub, subKey) in dim.sub_scores" :key="subKey" style="border-bottom: 1px solid var(--gray-100);">
+                                    <td style="padding: 12px;">{{ sub.name }}</td>
+                                    <td style="padding: 12px; text-align: center;">
+                                        <span :style="{ color: getScoreColor(sub.score, sub.max_score), fontWeight: 600 }">
+                                            {{ sub.score }}
+                                        </span>
+                                    </td>
+                                    <td style="padding: 12px; text-align: center;">{{ sub.max_score }}</td>
+                                    <td style="padding: 12px; font-size: 0.9rem; color: var(--gray-600); line-height: 1.5;">{{ sub.comment || '-' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- 优点 -->
+                    <div v-if="dim.strengths && dim.strengths.length" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### ✅ 优点</h4>
+                        <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; border-left: 4px solid #2e7d32;">
+                            <div v-for="(item, i) in dim.strengths" :key="'s'+i" style="margin-bottom: 10px; line-height: 1.6;">
+                                <span style="color: #2e7d32; font-weight: 600;">{{ i + 1 }}.</span> {{ item }}
+                            </div>
                         </div>
                     </div>
 
-                    <div v-if="dim.weaknesses && dim.weaknesses.length" style="margin-top: 15px;">
-                        <strong>⚠️ 待改进：</strong>
-                        <div class="list-item weak" v-for="(item, i) in dim.weaknesses.slice(0, 3)" :key="'w'+i">
-                            {{ item }}
+                    <!-- 待改进点 -->
+                    <div v-if="dim.weaknesses && dim.weaknesses.length" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### ⚠️ 待改进点</h4>
+                        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; border-left: 4px solid #e65100;">
+                            <div v-for="(item, i) in dim.weaknesses" :key="'w'+i" style="margin-bottom: 10px; line-height: 1.6;">
+                                <span style="color: #e65100; font-weight: 600;">{{ i + 1 }}.</span> {{ item }}
+                            </div>
                         </div>
                     </div>
 
-                    <div v-if="dim.suggestions && dim.suggestions.length" style="margin-top: 15px;">
-                        <strong>💡 修改建议（可编辑）：</strong>
-                        <div style="padding-left: 20px; margin-top: 8px;">
-                            <textarea
-                                v-for="(item, i) in dim.suggestions"
-                                :key="'sg'+i"
-                                class="editable-suggestion"
-                                v-model="dim.suggestions[i]"
-                                :data-dimension="key"
-                                :data-index="i"
-                                placeholder="输入修改建议..."
-                            ></textarea>
+                    <!-- 改进建议 -->
+                    <div v-if="dim.suggestions && dim.suggestions.length" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 💡 改进建议（可编辑）</h4>
+                        <div style="background: #f3e5f5; padding: 20px; border-radius: 8px; border-left: 4px solid #7b1fa2;">
+                            <div v-for="(item, i) in dim.suggestions" :key="'sg'+i" style="margin-bottom: 20px;">
+                                <div style="margin-bottom: 8px; font-weight: 600; color: #7b1fa2;">
+                                    **建议 {{ i + 1 }}**:
+                                </div>
+                                <textarea
+                                    class="editable-suggestion"
+                                    v-model="dim.suggestions[i]"
+                                    :data-dimension="key"
+                                    :data-index="i"
+                                    placeholder="输入修改建议..."
+                                ></textarea>
+                            </div>
                         </div>
                     </div>
+
+                    <!-- 人物分析（仅人物塑造维度） -->
+                    <div v-if="key === 'characters' && dim.character_analysis" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 人物分析</h4>
+                        <div v-for="(character, i) in dim.character_analysis" :key="'char'+i"
+                             style="background: #f5f5f5; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                            <div style="font-weight: 600; color: var(--gray-800); margin-bottom: 8px;">
+                                **{{ character.character || character.name }}** ({{ character.role }}) - {{ character.score }}/{{ character.max_score || 10 }}
+                            </div>
+                            <div style="color: var(--gray-600); line-height: 1.6;">{{ character.analysis || character.description }}</div>
+                        </div>
+                    </div>
+
+                    <!-- 精彩台词（仅对话质量维度） -->
+                    <div v-if="key === 'dialogue' && dim.notable_lines" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 精彩台词</h4>
+                        <div v-for="(line, i) in dim.notable_lines" :key="'line'+i"
+                             style="background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #1976d2;">
+                            <div style="font-style: italic; margin-bottom: 8px; color: #0d47a1;">
+                                &gt; **{{ line.speaker }}**: {{ line.line }}
+                            </div>
+                            <div style="color: var(--gray-600); font-size: 0.9rem;">{{ line.reason || line.analysis }}</div>
+                        </div>
+                    </div>
+
+                    <!-- 反转分析（仅短剧特质维度） -->
+                    <div v-if="key === 'drama_traits' && dim.plot_twists" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 反转分析</h4>
+                        <div v-for="(twist, i) in dim.plot_twists" :key="'twist'+i"
+                             style="background: #fce4ec; padding: 12px; border-radius: 8px; margin-bottom: 12px; border-left: 4px solid #c2185b;">
+                            <span style="font-weight: 600;">- **{{ twist.episode }}**:</span>
+                            {{ twist.description }} ({{ twist.score }}/10)
+                        </div>
+                    </div>
+
+                    <!-- 目标受众（仅商业价值维度） -->
+                    <div v-if="key === 'commercial' && dim.target_audience" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 目标受众</h4>
+                        <div style="background: #fff8e1; padding: 15px; border-radius: 8px;">
+                            <div v-if="dim.target_audience.primary" style="margin-bottom: 8px;">
+                                <span style="font-weight: 600;">- 主要受众:</span> {{ dim.target_audience.primary.join(', ') }}
+                            </div>
+                            <div v-if="dim.target_audience.age_range" style="margin-bottom: 8px;">
+                                <span style="font-weight: 600;">- 年龄范围:</span> {{ dim.target_audience.age_range }}
+                            </div>
+                            <div v-if="dim.target_audience.gender_preference" style="margin-bottom: 8px;">
+                                <span style="font-weight: 600;">- 性别偏好:</span> {{ dim.target_audience.gender_preference }}
+                            </div>
+                            <div v-if="dim.target_audience.interest_tags" style="margin-bottom: 8px;">
+                                <span style="font-weight: 600;">- 兴趣标签:</span> {{ dim.target_audience.interest_tags.join(', ') }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 视觉亮点（仅视觉呈现维度） -->
+                    <div v-if="key === 'visual' && dim.visual_highlights" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 🎨 视觉亮点</h4>
+                        <div style="background: #e3f2fd; padding: 15px; border-radius: 8px;">
+                            <div v-for="(item, i) in dim.visual_highlights" :key="'vh'+i" style="margin-bottom: 8px;">
+                                <span style="color: #1976d2;">✦</span> {{ item }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 制作建议（仅视觉呈现维度） -->
+                    <div v-if="key === 'visual' && dim.production_notes" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 📝 制作建议</h4>
+                        <div style="background: #f3e5f5; padding: 15px; border-radius: 8px;">
+                            <div v-for="(item, i) in dim.production_notes" :key="'pn'+i" style="margin-bottom: 8px;">
+                                <span style="color: #7b1fa2;">●</span> {{ item }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 情感标签（仅情感共鸣维度） -->
+                    <div v-if="key === 'emotional' && dim.emotional_tags" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### ❤️ 情感标签</h4>
+                        <div style="background: #fce4ec; padding: 15px; border-radius: 8px;">
+                            <span v-for="(tag, i) in dim.emotional_tags" :key="'et'+i"
+                                  style="display: inline-block; background: #ec407a; color: white; padding: 5px 12px; border-radius: 15px; margin: 3px; font-size: 0.9rem;">
+                                {{ tag }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 目标情绪（仅情感共鸣维度） -->
+                    <div v-if="key === 'emotional' && dim.target_emotion" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 🎭 目标情绪</h4>
+                        <div style="background: #f8bbd0; padding: 15px; border-radius: 8px; color: #c2185b; font-weight: 500;">
+                            {{ dim.target_emotion }}
+                        </div>
+                    </div>
+
+                    <!-- 创新亮点（仅创新度维度） -->
+                    <div v-if="key === 'innovation' && dim.innovation_highlights" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 💡 创新亮点</h4>
+                        <div style="background: #e8f5e9; padding: 15px; border-radius: 8px;">
+                            <div v-for="(item, i) in dim.innovation_highlights" :key="'ih'+i" style="margin-bottom: 8px;">
+                                <span style="color: #2e7d32;">★</span> {{ item }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 差异化优势（仅创新度维度） -->
+                    <div v-if="key === 'innovation' && dim.differentiation" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 🎯 差异化优势</h4>
+                        <div style="background: #c8e6c9; padding: 15px; border-radius: 8px; border-left: 4px solid #2e7d32;">
+                            {{ dim.differentiation }}
+                        </div>
+                    </div>
+
+                    <!-- 制作难度（仅可行性评估维度） -->
+                    <div v-if="key === 'feasibility' && dim.production_level" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 📊 制作难度等级</h4>
+                        <div style="background: #fff3e0; padding: 15px; border-radius: 8px; font-weight: 600; color: #e65100; text-align: center; font-size: 1.1rem;">
+                            {{ dim.production_level }}
+                        </div>
+                    </div>
+
+                    <!-- 资源需求（仅可行性评估维度） -->
+                    <div v-if="key === 'feasibility' && dim.resource_requirements" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 📦 资源需求</h4>
+                        <div style="background: #ffe0b2; padding: 15px; border-radius: 8px;">
+                            <div v-for="(item, i) in dim.resource_requirements" :key="'rr'+i" style="margin-bottom: 8px;">
+                                <span style="color: #e65100;">▸</span> {{ item }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 潜在问题（仅可行性评估维度） -->
+                    <div v-if="key === 'feasibility' && dim.potential_issues" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### ⚠️ 潜在问题</h4>
+                        <div style="background: #ffccbc; padding: 15px; border-radius: 8px; border-left: 4px solid #d84315;">
+                            <div v-for="(item, i) in dim.potential_issues" :key="'pi'+i" style="margin-bottom: 8px;">
+                                <span style="color: #d84315;">!</span> {{ item }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 价值主题（仅价值观导向维度） -->
+                    <div v-if="key === 'values' && dim.value_themes" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### 🌟 价值主题</h4>
+                        <div style="background: #e1f5fe; padding: 15px; border-radius: 8px;">
+                            <span v-for="(theme, i) in dim.value_themes" :key="'vt'+i"
+                                  style="display: inline-block; background: #0288d1; color: white; padding: 5px 12px; border-radius: 15px; margin: 3px; font-size: 0.9rem;">
+                                {{ theme }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- 风险提示（仅价值观导向维度） -->
+                    <div v-if="key === 'values' && dim.risk_warnings" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### ⚠️ 风险提示</h4>
+                        <div style="background: #ffcdd2; padding: 15px; border-radius: 8px; border-left: 4px solid #c62828;">
+                            <div v-for="(warning, i) in dim.risk_warnings" :key="'rw'+i" style="margin-bottom: 8px;">
+                                <span style="color: #c62828;">⚠</span> {{ warning }}
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- 总结建议 -->
+                <div style="margin-top: 40px; padding-top: 30px; border-top: 2px solid var(--gray-200);">
+                    <h3 style="margin: 0 0 20px 0; font-size: 1.5rem; color: var(--gray-800);">## 📋 总结建议</h3>
+
+                    <div style="margin-bottom: 30px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.3rem; color: #2e7d32;">### 🌟 核心优势</h4>
+                        <div style="background: #e8f5e9; padding: 20px; border-radius: 8px; border-left: 4px solid #2e7d32;">
+                            <div v-for="(strength, i) in getAllStrengths()" :key="'s'+i" style="margin-bottom: 10px; line-height: 1.6;">
+                                <span style="color: #2e7d32; font-weight: 600;">{{ i + 1 }}.</span> {{ strength }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 30px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.3rem; color: #e65100;">### 🔧 重点改进方向</h4>
+                        <div style="background: #fff3e0; padding: 20px; border-radius: 8px; border-left: 4px solid #e65100;">
+                            <div v-for="(suggestion, i) in getAllSuggestions()" :key="'sg'+i" style="margin-bottom: 10px; line-height: 1.6;">
+                                <span style="color: #e65100; font-weight: 600;">{{ i + 1 }}.</span> {{ suggestion }}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 8px; color: white;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.3rem;">### 📈 综合评价</h4>
+                        <div style="line-height: 1.8;" v-html="getOverallEvaluation()"></div>
+                    </div>
+                </div>
+
+                <!-- 底部说明 -->
+                <div style="margin-top: 30px; padding-top: 20px; border-top: 1px solid var(--gray-200); text-align: center; color: var(--gray-600); font-size: 0.9rem;">
+                    *本报告由 AI 剧本评测系统基于豆包 seed-1.8 模型生成，仅供参考。如需更精准的分析，建议结合专业人工评审。*
                 </div>
 
                 <div class="btn-group" style="margin-top: 30px;">
@@ -773,18 +1046,24 @@
                         formData.append('dimensions', this.selectedDimensions.join(','))
 
                         this.progressText = '正在上传剧本...'
+                        console.log('开始发送评测请求...')
                         const res = await axios.post('/api/evaluate', formData, {
                             headers: { 'Content-Type': 'multipart/form-data' },
-                            timeout: 600000  // 10分钟超时
+                            timeout: 1200000  // 20分钟超时（并发处理后，10个维度约需3-5分钟）
                         })
 
+                        console.log('收到响应:', res.data)
                         clearInterval(progressInterval)
                         this.progress = 100
                         this.progressText = '评测完成！'
 
                         if (res.data.success) {
+                            console.log('评测成功，设置结果...')
+                            console.log('结果数据:', res.data.result)
+                            console.log('维度数据:', res.data.result.dimensions)
                             this.result = res.data.result
                             this.stage = 'results'
+                            console.log('结果页面显示，stage:', this.stage)
                         } else {
                             this.showError(res.data.error || '评测失败')
                             this.stage = 'upload'
@@ -794,7 +1073,7 @@
                         let errorMsg = '评测失败，请稍后重试'
 
                         if (e.code === 'ECONNABORTED') {
-                            errorMsg = '评测请求超时（超过10分钟）。请尝试：\n1. 减少评测维度\n2. 缩短剧本长度\n3. 稍后重试'
+                            errorMsg = '评测请求超时（超过20分钟）。请尝试：\n1. 减少评测维度\n2. 缩短剧本长度\n3. 稍后重试'
                         } else if (e.response?.data?.error) {
                             errorMsg = e.response.data.error
                         }
@@ -826,6 +1105,63 @@
                         this.error = ''
                     }, duration)
                 },
+                // 根据分数返回颜色
+                getScoreColor(score, max) {
+                    const percentage = (score / max) * 100
+                    if (percentage >= 80) return '#2e7d32'  // 绿色
+                    if (percentage >= 60) return '#f57c00'  // 橙色
+                    return '#c62828'  // 红色
+                },
+                // 获取所有优点
+                getAllStrengths() {
+                    if (!this.result || !this.result.dimensions) return []
+                    const allStrengths = []
+                    for (const [key, dim] of Object.entries(this.result.dimensions)) {
+                        if (dim.strengths && dim.strengths.length) {
+                            const dimName = dim.dimension_name || key
+                            dim.strengths.forEach(s => {
+                                allStrengths.push(`[${dimName}] ${s}`)
+                            })
+                        }
+                    }
+                    return allStrengths
+                },
+                // 获取所有建议
+                getAllSuggestions() {
+                    if (!this.result || !this.result.dimensions) return []
+                    const allSuggestions = []
+                    for (const [key, dim] of Object.entries(this.result.dimensions)) {
+                        if (dim.suggestions && dim.suggestions.length) {
+                            const dimName = dim.dimension_name || key
+                            dim.suggestions.forEach(s => {
+                                allSuggestions.push(`[${dimName}] ${s}`)
+                            })
+                        }
+                    }
+                    return allSuggestions
+                },
+                // 获取综合评价
+                getOverallEvaluation() {
+                    if (!this.result || !this.result.overall) return ''
+                    const { total_score, grade } = this.result.overall
+                    let evaluation = ''
+
+                    if (grade === 'A' || grade === 'S') {
+                        evaluation = `<p>🎉 恭喜！您的剧本获得了 <strong>${grade}</strong> 级评价（${total_score}分），属于优秀水平。</p>`
+                        evaluation += `<p>剧本展现了出色的创作能力，各方面表现均衡且突出。建议保持当前水准，并在细节上继续打磨。</p>`
+                    } else if (grade === 'B') {
+                        evaluation = `<p>👍 您的剧本获得了 <strong>${grade}</strong> 级评价（${total_score}分），属于良好水平。</p>`
+                        evaluation += `<p>剧本整体表现良好，具备一定竞争力。建议根据上述改进方向进行优化，有望提升到更高等级。</p>`
+                    } else if (grade === 'C') {
+                        evaluation = `<p>💪 您的剧本获得了 <strong>${grade}</strong> 级评价（${total_score}分），尚有改进空间。</p>`
+                        evaluation += `<p>建议重点关注上述待改进点和改进建议，进行系统性修改，以提升剧本质量和市场竞争力。</p>`
+                    } else {
+                        evaluation = `<p>📝 您的剧本获得了 <strong>${grade}</strong> 级评价（${total_score}分），建议进行大幅修改。</p>`
+                        evaluation += `<p>建议从故事结构、人物塑造、对话质量等多个维度进行全面优化，参考上述改进建议逐项改进。</p>`
+                    }
+
+                    return evaluation
+                },
                 // 改进剧本
                 async improveScript() {
                     if (!this.result) return
@@ -851,7 +1187,7 @@
                             suggestions: suggestions,
                             evaluation_result: this.result
                         }, {
-                            timeout: 600000  // 10分钟超时
+                            timeout: 1200000  // 20分钟超时（并发处理后，10个维度约需3-5分钟）
                         })
 
                         if (res.data.success) {
@@ -897,10 +1233,10 @@
                     const blob = new Blob([this.improvedScript], { type: 'text/plain;charset=utf-8' })
                     const url = URL.createObjectURL(blob)
 
-                    // 创建下载链接
+                    // 创建下载链接 - 使用原剧本名称
                     const link = document.createElement('a')
                     link.href = url
-                    link.download = `${this.result.script_name}_改进版.txt`
+                    link.download = `${this.result.script_name}.txt`
                     document.body.appendChild(link)
                     link.click()
                     document.body.removeChild(link)

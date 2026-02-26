@@ -300,14 +300,36 @@ def evaluate():
         logger.info(f"评测完成，准备生成报告")
 
         # 生成报告
+        logger.info("开始生成报告...")
         report_generator = ReportGenerator(output_dir=app.config['OUTPUT_FOLDER'])
         result['script_name'] = filename.rsplit('.', 1)[0]  # 去掉扩展名
+        logger.info(f"剧本名称: {result['script_name']}")
+
+        # 预检查：验证数据是否可序列化
+        logger.info("验证数据可序列化...")
+        try:
+            json.dumps(result)
+            logger.info("数据序列化检查通过")
+        except Exception as e:
+            logger.error(f"数据序列化失败: {e}")
+            # 移除可能有问题的字段
+            result_clean = {}
+            for key, value in result.items():
+                try:
+                    json.dumps({key: value})
+                    result_clean[key] = value
+                except:
+                    logger.warning(f"跳过无法序列化的字段: {key}")
+            result = result_clean
+
         report_files = report_generator.generate(result, formats=['markdown', 'json'])
+        logger.info(f"报告生成完成: {report_files}")
 
         # 获取报告文件名（用于下载）
         result['report_files'] = [os.path.basename(f) for f in report_files]
 
         # 清理上传的临时文件
+        logger.info("清理临时文件...")
         try:
             os.remove(script_path)
             if temp_txt_path and os.path.exists(temp_txt_path):
@@ -315,10 +337,38 @@ def evaluate():
         except:
             pass
 
-        return jsonify({
+        logger.info("准备返回响应...")
+        logger.info(f"响应数据大小估算: {len(str(result))} 字符")
+
+        # 构建响应数据
+        response_data = {
             'success': True,
             'result': result
-        })
+        }
+
+        logger.info("构建 JSON 响应...")
+        logger.info(f"响应键: {list(response_data.keys())}")
+        logger.info(f"结果键: {list(result.keys())}")
+
+        # 尝试序列化
+        try:
+            json_response = jsonify(response_data)
+            logger.info("JSONify 成功，准备返回")
+            return json_response
+        except Exception as e:
+            logger.error(f"JSONify 失败: {e}")
+            import traceback
+            logger.error(traceback.format_exc())
+            # 返回简化版本
+            simple_response = {
+                'success': True,
+                'result': {
+                    'script_name': result.get('script_name', ''),
+                    'overall': result.get('overall', {}),
+                    'report_files': result.get('report_files', [])
+                }
+            }
+            return jsonify(simple_response)
 
     except Exception as e:
         logger.error(f"Error in evaluate: {str(e)}")
@@ -394,8 +444,27 @@ def improve_script():
         suggestions = data.get('suggestions', {})
         evaluation_result = data.get('evaluation_result', {})
 
+        # 读取原剧本内容
+        script_path = evaluation_result.get('script_path', '')
+        original_script_content = ""
+        if script_path and os.path.exists(script_path):
+            try:
+                with open(script_path, 'r', encoding='utf-8') as f:
+                    original_script_content = f.read()
+                logger.info(f"成功读取原剧本，长度: {len(original_script_content)} 字符")
+            except Exception as e:
+                logger.error(f"读取原剧本失败: {e}")
+                original_script_content = ""
+
         # 构建 AI 提示词
-        prompt = build_improve_prompt(original_script_name, suggestions, evaluation_result)
+        prompt = build_improve_prompt(original_script_name, suggestions, evaluation_result, original_script_content)
+
+        # 记录提示词中的集数要求，用于调试
+        import re
+        episode_match = re.search(r'原剧本共有 (\d+) 集', prompt)
+        if episode_match:
+            detected_episodes = episode_match.group(1)
+            logger.info(f"📊 改进剧本: {original_script_name}, 要求集数: {detected_episodes}集")
 
         logger.info(f"开始根据建议改进剧本: {original_script_name}")
 
@@ -439,7 +508,7 @@ def improve_script():
         }), 500
 
 
-def build_improve_prompt(script_name, suggestions, evaluation_result):
+def build_improve_prompt(script_name, suggestions, evaluation_result, original_script_content=""):
     """
     构建剧本改进的提示词
 
@@ -447,11 +516,136 @@ def build_improve_prompt(script_name, suggestions, evaluation_result):
         script_name: 原剧本名称
         suggestions: 各维度的修改建议
         evaluation_result: 完整的评测结果
+        original_script_content: 原剧本完整内容
 
     Returns:
         完整的提示词
     """
-    prompt = f"""请根据以下评测建议，改进剧本《{script_name}》：
+
+    # 尝试从原剧本内容中检测集数
+    episode_count = 0  # 默认为0，确保是整数
+    if original_script_content:
+        # 检测常见的集数标记模式
+        import re
+
+        # 方法1: 匹配 "第X集"、"第 X 集"、"Episode X" 等模式
+        episode_patterns = [
+            r'第(\d+)集',
+            r'第\s*(\d+)\s*集',
+            r'Episode\s*(\d+)',
+            r'EP[.\s]*(\d+)',
+            r'第(\d+)章',
+            r'第\s*(\d+)\s*章'
+        ]
+        episodes_found = []
+        for pattern in episode_patterns:
+            matches = re.findall(pattern, original_script_content, re.IGNORECASE)
+            if matches:
+                episodes_found.extend([int(m) for m in matches])
+
+        # 方法2: 检测"分集剧本"部分后的数字行（格式如："1"、"2"、"3"等）
+        if not episodes_found:
+            # 查找"分集剧本"之后的内容
+            episode_section_match = re.search(r'分集剧本\s*(.*?)(?=\n\s*\n|\Z)', original_script_content, re.DOTALL)
+            if episode_section_match:
+                episode_section = episode_section_match.group(1)
+                # 匹配独立的数字行（集数标记）
+                standalone_numbers = re.findall(r'^(\d+)$', episode_section, re.MULTILINE)
+                if standalone_numbers:
+                    episodes_found.extend([int(n) for n in standalone_numbers])
+
+        # 方法3: 直接统计所有独立的数字行（作为后备方案）
+        if not episodes_found:
+            standalone_numbers = re.findall(r'^(\d+)$', original_script_content, re.MULTILINE)
+            # 过滤掉可能是页码或其他数字的行（通常是连续的数字，如1,2,3...）
+            if standalone_numbers:
+                # 去重并排序
+                unique_numbers = sorted(set([int(n) for n in standalone_numbers]))
+                # 如果有连续的数字序列（1,2,3...），取最大的
+                if len(unique_numbers) > 1:
+                    episodes_found = unique_numbers
+
+        if episodes_found:
+            episode_count = max(episodes_found)  # 取最大的集数
+
+    # 如果检测失败，至少设置为默认值20
+    if episode_count == 0:
+        episode_count = 20
+
+    prompt = f"""⚠️⚠️⚠️ 重要：原剧本共有 {episode_count} 集，改进后的剧本必须是 {episode_count} 集 ⚠️⚠️⚠️
+
+请根据以下评测建议，改进剧本《{script_name}》。
+
+## 🔴 核心要求（必须严格遵守，不可违反）
+
+1. **集数必须完全一致** - 原剧本共有 {episode_count} 集，改进后的剧本也必须是 {episode_count} 集，不能增加或减少任何一集
+2. **保持原剧本格式** - 完全按照原剧本的格式结构输出，包括以下所有部分：
+   - 剧本名称
+   - 剧本风格
+   - 故事概要
+   - 人物设定（包含所有角色的外貌特征和功能）
+   - 剧情大纲（opening/development/climax/ending）
+   - 分集剧本（{episode_count} 集，每一集都要包含：时长、场景、影视化画面提示、第一人称旁白、动作/事件、结尾钩子）
+3. **基于原剧本改进** - 在原剧本基础上进行针对性修改，不要重新创作
+4. **保持原剧本风格** - 保留原有的语言风格、叙事节奏、人物设定等
+
+## 📋 剧本格式模板
+
+请严格按照以下格式输出改进后的剧本：
+
+```
+剧本名称
+剧本风格：[风格1], [风格2], [风格3], ...
+故事概要：[概要内容]
+
+人物设定
+[角色名]（[身份]） - [性格特征1]、[性格特征2]
+外貌特征：[外貌描述]
+功能：[角色功能]
+
+[角色名]（[身份]） - [性格特征1]、[性格特征2]
+外貌特征：[外貌描述]
+功能：[角色功能]
+
+剧情大纲
+opening: [开篇内容]
+development: [发展内容]
+climax: [高潮内容]
+ending: [结局内容]
+
+分集剧本
+1
+【时长】：[秒数]
+【场景】：[时间] [地点] [氛围描述]
+【影视化画面提示】：[画面描述]
+【第一人称旁白(OS)】：[旁白内容]
+【动作 / 事件】：[动作描述]
+【结尾钩子】：[钩子内容]
+
+2
+【时长】：[秒数]
+【场景】：[时间] [地点] [氛围描述]
+【影视化画面提示】：[画面描述]
+【第一人称旁白(OS)】：[旁白内容]
+【动作 / 事件】：[动作描述]
+【结尾钩子】：[钩子内容]
+
+3
+【时长】：[秒数]
+【场景】：[时间] [地点] [氛围描述]
+【影视化画面提示】：[画面描述]
+【第一人称旁白(OS)】：[旁白内容]
+【动作 / 事件】：[动作描述]
+【结尾钩子】：[钩子内容]
+
+...（必须一直写到第 {episode_count} 集，不能省略任何一集）
+```
+
+## 原剧本完整内容
+
+```
+{original_script_content}
+```
 
 ## 修改建议
 
@@ -475,16 +669,41 @@ def build_improve_prompt(script_name, suggestions, evaluation_result):
         prompt += f"- 总分：{overall.get('total_score', 0)}/{overall.get('max_score', 100)}\n"
         prompt += f"- 等级：{overall.get('grade', 'N/A')}\n\n"
 
-    prompt += """
-请根据以上建议，输出完整的改进后剧本。剧本格式应包含：
-1. 标题
-2. 剧本风格
-3. 故事概要
-4. 人物设定
-5. 剧情大纲
-6. 分集剧本（完整的每一集内容）
+    prompt += f"""
 
-请确保改进后的剧本直接可用，格式规范。"""
+## 📋 输出要求（必须严格遵守，不可违反）
+
+请严格按照上面的【剧本格式模板】输出完整的改进后剧本：
+
+1. **完整集数**：必须输出完整的 {episode_count} 集内容，从第1集到第{episode_count}集，不能省略任何一集
+2. **格式完全一致**：严格按照格式模板，包含以下所有部分：
+   - 剧本名称、剧本风格、故事概要
+   - 人物设定（每个角色包含：角色名、身份、性格、外貌特征、功能）
+   - 剧情大纲（包含 opening、development、climax、ending 四个部分）
+   - 分集剧本（必须输出 {episode_count} 集，每集包含：时长、场景、影视化画面提示、第一人称旁白、动作/事件、结尾钩子）
+3. **保持原剧本结构**：每集标题为数字"1"、"2"、"3"等，与原剧本格式完全一致
+4. **针对性改进**：根据修改建议对相应内容进行改进，但保持整体结构不变
+5. **输出顺序**：剧本名称 → 剧本风格 → 故事概要 → 人物设定 → 剧情大纲 → 分集剧本
+
+🚨🚨🚨 超级重要（违反将被视为失败）🚨🚨🚨：
+
+1. **集数必须准确**：必须是 {episode_count} 集，不能是 {episode_count - 1} 集、{episode_count - 2} 集或 {episode_count + 1} 集
+2. **每集必须完整**：每一集都必须包含完整的6个要素（时长、场景、影视化画面提示、第一人称旁白、动作/事件、结尾钩子）
+3. **不要省略中间集数**：如果原剧本有{episode_count}集，就不要输出"1...10"然后跳到"{episode_count}"，必须输出1到{episode_count}每一集
+4. **格式符号一致**：【时长】：、【场景】：、【第一人称旁白(OS)】：、【动作 / 事件】：、【结尾钩子】：
+
+示例：如果原剧本是{episode_count}集，你的输出必须包含：
+1
+【时长】：...
+2
+【时长】：...
+3
+【时长】：...
+...
+{episode_count}
+【时长】：...
+
+请直接输出改进后的剧本内容，不要添加任何额外的解释说明或开场白。"""
 
     return prompt
 

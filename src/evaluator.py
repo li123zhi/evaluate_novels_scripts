@@ -8,6 +8,8 @@ import yaml
 from pathlib import Path
 from typing import Dict, List, Any, Optional
 from tqdm import tqdm
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import threading
 
 from .api_client import DoubaoAPIClient
 
@@ -339,16 +341,45 @@ class ScriptEvaluator:
             "dimensions": {}
         }
 
-        # 评测各个维度
-        dimension_iter = dimensions
-        if show_progress:
-            dimension_iter = tqdm(dimensions, desc="评测进度")
+        # 使用线程池并发评测各个维度
+        logger.info(f"开始并发评测 {len(dimensions)} 个维度...")
 
-        for i, dimension in enumerate(dimension_iter, 1):
-            logger.info(f"开始评测第 {i}/{len(dimensions)} 个维度: {dimension}")
-            dimension_result = self._evaluate_dimension(dimension, script_content)
-            result["dimensions"][dimension] = dimension_result
-            logger.info(f"维度 {dimension} 评测完成")
+        # 创建线程安全的进度条
+        if show_progress:
+            progress_bar = tqdm(total=len(dimensions), desc="评测进度")
+        else:
+            progress_bar = None
+
+        # 使用线程池并发执行
+        with ThreadPoolExecutor(max_workers=5) as executor:  # 最多5个并发
+            # 提交所有评测任务
+            future_to_dimension = {
+                executor.submit(self._evaluate_dimension, dimension, script_content): dimension
+                for dimension in dimensions
+            }
+
+            # 收集结果
+            for future in as_completed(future_to_dimension):
+                dimension = future_to_dimension[future]
+                try:
+                    dimension_result = future.result()
+                    result["dimensions"][dimension] = dimension_result
+                    logger.info(f"维度 {dimension} 评测完成，得分: {dimension_result.get('total_score', 0)}")
+                except Exception as e:
+                    logger.error(f"维度 {dimension} 评测失败: {str(e)}")
+                    result["dimensions"][dimension] = {
+                        "dimension": dimension,
+                        "dimension_name": self.dimensions.get(dimension, {}).get('name', dimension),
+                        "error": str(e),
+                        "total_score": 0,
+                        "max_score": 100
+                    }
+
+                if progress_bar:
+                    progress_bar.update(1)
+
+        if progress_bar:
+            progress_bar.close()
 
         # 计算综合评分
         logger.info("正在计算综合评分...")

@@ -4,33 +4,63 @@
 evaluation_dimensions:
   structure:
     name: "故事结构"
-    weight: 0.25
+    weight: 0.10
     description: "评估起承转合、情节节奏、高潮设置、逻辑连贯性"
     prompt_file: "prompts/structure.txt"
 
   characters:
     name: "人物塑造"
-    weight: 0.25
+    weight: 0.10
     description: "评估角色性格、对话自然度、人物动机、角色成长"
     prompt_file: "prompts/characters.txt"
 
   dialogue:
     name: "对话质量"
-    weight: 0.20
+    weight: 0.10
     description: "评估台词精彩度、口语化程度、潜台词、冲突性"
     prompt_file: "prompts/dialogue.txt"
 
   drama_traits:
     name: "短剧特质"
-    weight: 0.15
+    weight: 0.10
     description: "评估开篇吸引力（黄金3秒）、反转设计、爽点密度"
     prompt_file: "prompts/drama_traits.txt"
 
   commercial:
     name: "商业价值"
-    weight: 0.15
-    description: "评估受众匹配度、传播潜力、变现能力"
+    weight: 0.10
+    description: "评估受众匹配度、传播潜力"
     prompt_file: "prompts/commercial.txt"
+
+  visual:
+    name: "视觉呈现"
+    weight: 0.10
+    description: "评估画面描写、镜头语言、场景转换、道具服装"
+    prompt_file: "prompts/visual.txt"
+
+  emotional:
+    name: "情感共鸣"
+    weight: 0.10
+    description: "评估情感张力、代入感、情绪曲线"
+    prompt_file: "prompts/emotional.txt"
+
+  innovation:
+    name: "创新度"
+    weight: 0.10
+    description: "评估题材创新、情节创新、表达创新"
+    prompt_file: "prompts/innovation.txt"
+
+  feasibility:
+    name: "可行性评估"
+    weight: 0.10
+    description: "评估拍摄难度、成本控制、时长控制"
+    prompt_file: "prompts/feasibility.txt"
+
+  values:
+    name: "价值观导向"
+    weight: 0.10
+    description: "评估正能量传递、内容合规性、社会责任"
+    prompt_file: "prompts/values.txt"
 
 # 输出配置
 output:
