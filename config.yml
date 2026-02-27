@@ -103,7 +103,7 @@ evaluation_dimensions:
 
   ip_potential:
     name: "IP延展性"
-    weight: 0.06
+    weight: 0.02
     description: "评估角色IP潜力、世界观扩展性、跨媒介适配性、商业化空间"
     prompt_file: "prompts/ip_potential.txt"
 
@@ -118,12 +118,6 @@ evaluation_dimensions:
     weight: 0.08
     description: "评估黄金3秒吸引力、情绪价值密度、节奏反转、话题传播性、平台适配度"
     prompt_file: "prompts/douyin_viral.txt"
-
-  viral_script_standard:
-    name: "抖音爆剧剧本标准"
-    weight: 0.08
-    description: "按照抖音爆剧核心标准评测：强钩子开场、节奏紧凑、强情绪价值、单集结构、内容特点、运营思维"
-    prompt_file: "prompts/viral_script_standard.txt"
 
   market_validation:
     name: "市场验证与竞品对比"
