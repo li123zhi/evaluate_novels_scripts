@@ -1,70 +1,139 @@
 # 剧本评测配置
 
-# 评测维度配置
+# 评测维度配置（市场导向权重配置）
 evaluation_dimensions:
+  # 基础维度（降低权重，更多参考市场维度）
   structure:
     name: "故事结构"
-    weight: 0.10
+    weight: 0.03
     description: "评估起承转合、情节节奏、高潮设置、逻辑连贯性"
     prompt_file: "prompts/structure.txt"
 
   characters:
     name: "人物塑造"
-    weight: 0.10
+    weight: 0.03
     description: "评估角色性格、对话自然度、人物动机、角色成长"
     prompt_file: "prompts/characters.txt"
 
   dialogue:
     name: "对话质量"
-    weight: 0.10
+    weight: 0.03
     description: "评估台词精彩度、口语化程度、潜台词、冲突性"
     prompt_file: "prompts/dialogue.txt"
 
   drama_traits:
     name: "短剧特质"
-    weight: 0.10
+    weight: 0.03
     description: "评估开篇吸引力（黄金3秒）、反转设计、爽点密度"
     prompt_file: "prompts/drama_traits.txt"
 
   commercial:
     name: "商业价值"
-    weight: 0.10
+    weight: 0.03
     description: "评估受众匹配度、传播潜力"
     prompt_file: "prompts/commercial.txt"
 
   visual:
     name: "视觉呈现"
-    weight: 0.10
+    weight: 0.03
     description: "评估画面描写、镜头语言、场景转换、道具服装"
     prompt_file: "prompts/visual.txt"
 
   emotional:
     name: "情感共鸣"
-    weight: 0.10
+    weight: 0.03
     description: "评估情感张力、代入感、情绪曲线"
     prompt_file: "prompts/emotional.txt"
 
   innovation:
     name: "创新度"
-    weight: 0.10
+    weight: 0.03
     description: "评估题材创新、情节创新、表达创新"
     prompt_file: "prompts/innovation.txt"
 
   feasibility:
     name: "可行性评估"
-    weight: 0.10
+    weight: 0.03
     description: "评估拍摄难度、成本控制、时长控制"
     prompt_file: "prompts/feasibility.txt"
 
   values:
     name: "价值观导向"
-    weight: 0.10
+    weight: 0.03
     description: "评估正能量传递、内容合规性、社会责任"
     prompt_file: "prompts/values.txt"
 
+  # 高级维度
+  visual_storytelling:
+    name: "视觉叙事能力"
+    weight: 0.03
+    description: "评估画面信息密度、视觉语言运用、叙事流畅度、视觉冲击力"
+    prompt_file: "prompts/visual_storytelling.txt"
+
+  character_design:
+    name: "角色设计适配性"
+    weight: 0.03
+    description: "评估视觉记忆点、表情丰富度、动作设计空间、角色一致性"
+    prompt_file: "prompts/character_design.txt"
+
+  pacing_storyboard:
+    name: "节奏与分镜"
+    weight: 0.03
+    description: "评估镜头切换频率、转场流畅度、视觉焦点引导、黄金3秒"
+    prompt_file: "prompts/pacing_storyboard.txt"
+
+  ai_quality:
+    name: "AI生成质量检测"
+    weight: 0.03
+    description: "评估内容一致性、逻辑连贯性、重复度、创新性"
+    prompt_file: "prompts/ai_quality.txt"
+
+  # 市场维度（提高权重，这是决定成败的关键）
+  completion_rate:
+    name: "完播率预测"
+    weight: 0.07
+    description: "评估钩子密度、情绪峰值分布、信息密度、弃剧风险"
+    prompt_file: "prompts/completion_rate.txt"
+
+  social_currency:
+    name: "社交货币价值"
+    weight: 0.08
+    description: "评估梗点潜质、话题性、二次创作友好度、金句密度"
+    prompt_file: "prompts/social_currency.txt"
+
+  ip_potential:
+    name: "IP延展性"
+    weight: 0.06
+    description: "评估角色IP潜力、世界观扩展性、跨媒介适配性、商业化空间"
+    prompt_file: "prompts/ip_potential.txt"
+
+  risk_warning:
+    name: "风险预警"
+    weight: 0.04
+    description: "评估内容风险、制作风险、市场风险、口碑风险"
+    prompt_file: "prompts/risk_warning.txt"
+
+  douyin_viral:
+    name: "抖音爆剧潜力"
+    weight: 0.08
+    description: "评估黄金3秒吸引力、情绪价值密度、节奏反转、话题传播性、平台适配度"
+    prompt_file: "prompts/douyin_viral.txt"
+
+  viral_script_standard:
+    name: "抖音爆剧剧本标准"
+    weight: 0.08
+    description: "按照抖音爆剧核心标准评测：强钩子开场、节奏紧凑、强情绪价值、单集结构、内容特点、运营思维"
+    prompt_file: "prompts/viral_script_standard.txt"
+
+  market_validation:
+    name: "市场验证与竞品对比"
+    weight: 0.10
+    description: "严格的市场验证：差异化程度、市场饱和度、实际爆点预测、对标竞品对比（惩罚性评分）"
+    prompt_file: "prompts/market_validation.txt"
+
 # 输出配置
 output:
-  format: ["markdown", "json"]  # 支持的输出格式
+  format: ["markdown", "json", "word", "ppt"]  # 支持的输出格式
   directory: "outputs"
   include_detailed_analysis: true
   include_suggestions: true

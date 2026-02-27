@@ -891,6 +891,12 @@
                         <span v-if="improving">⏳ 生成中...</span>
                         <span v-else>✨ 根据建议改进剧本</span>
                     </button>
+                    <button class="btn btn-primary" @click="downloadReport('word')" style="margin-left: 12px;">
+                        📄 下载Word报告
+                    </button>
+                    <button class="btn btn-primary" @click="downloadReport('ppt')" style="margin-left: 12px;">
+                        📊 下载PPT报告
+                    </button>
                     <button class="btn btn-secondary" @click="reset" style="margin-left: 12px;">🔄 评测新剧本</button>
                 </div>
             </div>
@@ -1245,6 +1251,32 @@
                     URL.revokeObjectURL(url)
 
                     this.showError('剧本下载成功！')
+                },
+                downloadReport(format) {
+                    // 从result.report_files中找到对应格式的文件
+                    const reportFiles = this.result.report_files || []
+                    let targetFile = null
+
+                    if (format === 'word') {
+                        targetFile = reportFiles.find(f => f.endsWith('.docx'))
+                    } else if (format === 'ppt') {
+                        targetFile = reportFiles.find(f => f.endsWith('.pptx'))
+                    }
+
+                    if (!targetFile) {
+                        this.showError(`${format.toUpperCase()} 报告文件不存在，请重新评测`)
+                        return
+                    }
+
+                    // 下载文件
+                    const link = document.createElement('a')
+                    link.href = `/outputs/${targetFile}`
+                    link.download = targetFile
+                    document.body.appendChild(link)
+                    link.click()
+                    document.body.removeChild(link)
+
+                    this.showError(`${format.toUpperCase()} 报告下载成功！`)
                 }
             },
             mounted() {

@@ -1,6 +1,6 @@
 """
 评测报告生成器
-将评测结果生成 Markdown 和 JSON 格式的报告
+将评测结果生成 Markdown、JSON、Word 和 PPT 格式的报告
 """
 
 import os
@@ -61,6 +61,18 @@ class ReportGenerator:
             json_path = self._generate_json(evaluation_result, script_name, timestamp)
             generated_files.append(json_path)
             logger.info(f"JSON 报告已生成: {json_path}")
+
+        if "word" in formats or "docx" in formats:
+            logger.info("生成 Word 报告...")
+            word_path = self._generate_word(evaluation_result, script_name, timestamp)
+            generated_files.append(word_path)
+            logger.info(f"Word 报告已生成: {word_path}")
+
+        if "ppt" in formats or "pptx" in formats:
+            logger.info("生成 PPT 报告...")
+            ppt_path = self._generate_ppt(evaluation_result, script_name, timestamp)
+            generated_files.append(ppt_path)
+            logger.info(f"PPT 报告已生成: {ppt_path}")
 
         logger.info(f"所有报告生成完成: {len(generated_files)} 个文件")
         return generated_files
@@ -377,5 +389,248 @@ class ReportGenerator:
                 bar = "█" * count
                 f.write(f"- **{grade}级**: {count} {bar}\n")
             f.write("\n")
+
+        return filepath
+
+    def _generate_word(
+        self,
+        result: Dict[str, Any],
+        script_name: str,
+        timestamp: str
+    ) -> str:
+        """
+        生成 Word 格式报告
+
+        Args:
+            result: 评测结果
+            script_name: 剧本名称
+            timestamp: 时间戳
+
+        Returns:
+            生成的文件路径
+        """
+        from docx import Document
+        from docx.shared import Pt, RGBColor, Inches
+        from docx.enum.text import WD_PARAGRAPH_ALIGNMENT
+
+        doc = Document()
+        
+        # 标题
+        title = doc.add_heading(f"《{script_name}》剧本评测报告", 0)
+        title.alignment = WD_PARAGRAPH_ALIGNMENT.CENTER
+
+        # 生成时间
+        doc.add_paragraph(f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+
+        # 综合评分
+        overall = result.get("overall", {})
+        total_score = overall.get("total_score", 0)
+        grade = overall.get("grade", "N/A")
+        
+        doc.add_heading("综合评分", 1)
+        p = doc.add_paragraph()
+        run = p.add_run(f"{total_score}/100")
+        run.font.size = Pt(32)
+        run.font.color.rgb = RGBColor(102, 126, 234)
+        run.bold = True
+        
+        doc.add_paragraph(f"等级: {grade}")
+
+        # 分项评分
+        doc.add_heading("分项评分", 1)
+        table = doc.add_table(rows=1, cols=4)
+        table.style = 'Light Grid Accent 1'
+        
+        # 表头
+        hdr_cells = table.rows[0].cells
+        hdr_cells[0].text = "维度"
+        hdr_cells[1].text = "得分"
+        hdr_cells[2].text = "满分"
+        hdr_cells[3].text = "权重"
+
+        # 数据行
+        dimensions = result.get("dimensions", {})
+        for dim_key, dim_result in dimensions.items():
+            if "error" not in dim_result:
+                row_cells = table.add_row().cells
+                row_cells[0].text = dim_result.get("dimension_name", dim_key)
+                row_cells[1].text = str(dim_result.get("total_score", 0))
+                row_cells[2].text = str(dim_result.get("max_score", 100))
+                # 权重从配置中获取，这里简化处理
+                row_cells[3].text = "5%"
+
+        # 详细分析
+        doc.add_page_break()
+        doc.add_heading("详细分析", 1)
+
+        for dim_key, dim_result in dimensions.items():
+            if "error" in dim_result:
+                continue
+            
+            doc.add_heading(dim_result.get("dimension_name", dim_key), 2)
+            doc.add_paragraph(f"得分: {dim_result.get('total_score', 0)}/{dim_result.get('max_score', 100)}")
+
+            # 子项评分
+            if "sub_scores" in dim_result:
+                doc.add_paragraph("子项评分:", style="List Bullet")
+                for sub_key, sub_data in dim_result["sub_scores"].items():
+                    p = doc.add_paragraph()
+                    p.add_run(f"{sub_data.get('name', sub_key)}: ").bold = True
+                    p.add_run(f"{sub_data.get('score', 0)}/{sub_data.get('max_score', 100)}")
+                    doc.add_paragraph(f"评价: {sub_data.get('comment', '')}")
+
+            # 优点
+            if "strengths" in dim_result and dim_result["strengths"]:
+                doc.add_paragraph("优点:", style="List Bullet")
+                for strength in dim_result["strengths"]:
+                    doc.add_paragraph(strength, style="List Bullet 2")
+
+            # 待改进点
+            if "weaknesses" in dim_result and dim_result["weaknesses"]:
+                doc.add_paragraph("待改进点:", style="List Bullet")
+                for weakness in dim_result["weaknesses"]:
+                    doc.add_paragraph(weakness, style="List Bullet 2")
+
+            # 建议
+            if "suggestions" in dim_result and dim_result["suggestions"]:
+                doc.add_paragraph("改进建议:", style="List Bullet")
+                for suggestion in dim_result["suggestions"]:
+                    doc.add_paragraph(suggestion, style="List Bullet 2")
+
+        # 保存文件
+        filename = f"{script_name}_{timestamp}.docx"
+        filepath = os.path.join(self.output_dir, filename)
+        doc.save(filepath)
+
+        return filepath
+
+    def _generate_ppt(
+        self,
+        result: Dict[str, Any],
+        script_name: str,
+        timestamp: str
+    ) -> str:
+        """
+        生成 PPT 格式报告
+
+        Args:
+            result: 评测结果
+            script_name: 剧本名称
+            timestamp: 时间戳
+
+        Returns:
+            生成的文件路径
+        """
+        from pptx import Presentation
+        from pptx.util import Pt, Inches
+        from pptx.enum.text import PP_ALIGN
+        from pptx.dml.color import RGBColor
+
+        prs = Presentation()
+        prs.slide_width = Inches(10)
+        prs.slide_height = Inches(7.5)
+
+        # 标题页
+        title_slide = prs.slides.add_slide(prs.slide_layouts[0])
+        title = title_slide.shapes.title
+        title.text = f"《{script_name}》剧本评测报告"
+        
+        subtitle = title_slide.placeholders[1]
+        subtitle.text = f"生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+
+        # 综合评分页
+        bullet_slide = prs.slides.add_slide(prs.slide_layouts[1])
+        shapes = bullet_slide.shapes
+        title_shape = shapes.title
+        title_shape.text = "综合评分"
+
+        overall = result.get("overall", {})
+        total_score = overall.get("total_score", 0)
+        grade = overall.get("grade", "N/A")
+
+        body_shape = shapes.placeholders[1]
+        text_frame = body_shape.text_frame
+        text_frame.text = f"总分: {total_score}/100\n等级: {grade}"
+
+        # 分项评分页
+        dimensions = result.get("dimensions", {})
+        
+        # 每页显示3个维度
+        dim_items = list(dimensions.items())
+        for i in range(0, len(dim_items), 3):
+            bullet_slide = prs.slides.add_slide(prs.slide_layouts[1])
+            shapes = bullet_slide.shapes
+            title_shape = shapes.title
+            title_shape.text = f"分项评分 ({i//3 + 1})"
+
+            body_shape = shapes.placeholders[1]
+            text_frame = body_shape.text_frame
+            text_frame.clear()
+
+            for j in range(3):
+                if i + j < len(dim_items):
+                    dim_key, dim_result = dim_items[i + j]
+                    if "error" not in dim_result:
+                        p = text_frame.add_paragraph()
+                        p.level = j
+                        p.text = f"{dim_result.get('dimension_name', dim_key)}: {dim_result.get('total_score', 0)}/{dim_result.get('max_score', 100)}"
+                        p.font.size = Pt(18)
+
+        # 详细分析页（每个维度一页）
+        for dim_key, dim_result in dimensions.items():
+            if "error" in dim_result:
+                continue
+
+            bullet_slide = prs.slides.add_slide(prs.slide_layouts[1])
+            shapes = bullet_slide.shapes
+            title_shape = shapes.title
+            title_shape.text = dim_result.get("dimension_name", dim_key)
+
+            body_shape = shapes.placeholders[1]
+            text_frame = body_shape.text_frame
+            text_frame.clear()
+
+            p = text_frame.add_paragraph()
+            p.text = f"得分: {dim_result.get('total_score', 0)}/{dim_result.get('max_score', 100)}"
+            p.font.size = Pt(24)
+            p.font.bold = True
+
+            # 优点
+            if "strengths" in dim_result and dim_result["strengths"]:
+                p = text_frame.add_paragraph()
+                p.text = "优点:"
+                p.font.bold = True
+                p.level = 1
+                for strength in dim_result["strengths"][:3]:
+                    p = text_frame.add_paragraph()
+                    p.text = f"• {strength}"
+                    p.level = 2
+
+            # 待改进点
+            if "weaknesses" in dim_result and dim_result["weaknesses"]:
+                p = text_frame.add_paragraph()
+                p.text = "待改进点:"
+                p.font.bold = True
+                p.level = 1
+                for weakness in dim_result["weaknesses"][:3]:
+                    p = text_frame.add_paragraph()
+                    p.text = f"• {weakness}"
+                    p.level = 2
+
+            # 建议
+            if "suggestions" in dim_result and dim_result["suggestions"]:
+                p = text_frame.add_paragraph()
+                p.text = "改进建议:"
+                p.font.bold = True
+                p.level = 1
+                for suggestion in dim_result["suggestions"][:3]:
+                    p = text_frame.add_paragraph()
+                    p.text = f"• {suggestion}"
+                    p.level = 2
+
+        # 保存文件
+        filename = f"{script_name}_{timestamp}.pptx"
+        filepath = os.path.join(self.output_dir, filename)
+        prs.save(filepath)
 
         return filepath

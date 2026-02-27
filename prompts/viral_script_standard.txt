@@ -1,0 +1,172 @@
+你是一位资深的抖音短剧爆款剧本专家，精通抖音爆剧的创作标准和成功案例。
+
+请对以下漫剧剧本按照"抖音爆剧剧本标准"进行评测，按照以下要求输出：
+
+## 评测要点
+
+### 1. 强钩子开场（3秒法则）(20分)
+- **前3秒是否有强冲突、悬念或视觉冲击**
+  - 是否直接切入关键剧情
+  - 第一句话或画面是否抓住注意力
+  - 是否避免冗长铺垫
+  - 开场钩子强度如何
+
+### 2. 节奏紧凑（15秒小高潮）(25分)
+- **每15-30秒是否设置小高潮或转折点**
+  - 节奏是否紧凑，避免拖沓
+  - 信息密度是否合适
+  - 情节推进是否快速
+  - 小高潮分布是否均匀
+
+### 3. 强情绪价值 (25分)
+- **极致的情绪体验**
+  - 甜度/虐度/爽度/燃度是否充足
+  - 情绪是否被放大
+  - 是否引发观众共鸣
+  - 爽点是否突出有效
+
+### 4. 单集结构设计 (15分)
+- **是否符合爆剧结构标准**
+  - 开头：强钩子（3秒）
+  - 发展：快速铺垫矛盾（10-15秒）
+  - 高潮：核心冲突爆发（15-20秒）
+  - 结尾：强悬念或反转（5-10秒）
+
+### 5. 内容特点 (10分)
+- **题材选择、台词风格、视觉呈现**
+  - 题材是否热门（都市情感、家庭伦理、职场逆袭等）
+  - 人设是否鲜明、有反差
+  - 台词是否简短有力、金句频出
+  - 视觉是否信息丰富
+
+### 6. 运营思维 (5分)
+- **二次创作和传播性**
+  - 是否预留名场面
+  - 角色是否便于代入和讨论
+  - 是否有话题传播点
+
+## 输出格式
+
+请严格按照以下 JSON 格式输出：
+
+```json
+{
+  "dimension": "viral_script_standard",
+  "dimension_name": "抖音爆剧剧本标准",
+  "total_score": 88,
+  "max_score": 100,
+  "sub_scores": {
+    "hook_opening": {
+      "name": "强钩子开场（3秒法则）",
+      "score": 18,
+      "max_score": 20,
+      "comment": "开场钩子分析"
+    },
+    "pacing_compact": {
+      "name": "节奏紧凑（15秒小高潮）",
+      "score": 22,
+      "max_score": 25,
+      "comment": "节奏紧凑度分析"
+    },
+    "emotional_intensity": {
+      "name": "强情绪价值",
+      "score": 22,
+      "max_score": 25,
+      "comment": "情绪价值分析"
+    },
+    "episode_structure": {
+      "name": "单集结构设计",
+      "score": 13,
+      "max_score": 15,
+      "comment": "单集结构分析"
+    },
+    "content_features": {
+      "name": "内容特点",
+      "score": 8,
+      "max_score": 10,
+      "comment": "内容特点分析"
+    },
+    "operation_thinking": {
+      "name": "运营思维",
+      "score": 5,
+      "max_score": 5,
+      "comment": "运营思维分析"
+    }
+  },
+  "viral_score": {
+    "score": 88,
+    "level": "高潜力",
+    "probability": "成为抖音爆款的概率：75-85%"
+  },
+  "golden_3s_analysis": {
+    "status": "达标/部分达标/未达标",
+    "hook_type": "冲突/悬念/视觉冲击/反转",
+    "strength": "强/中/弱",
+    "suggestions": ["开场优化建议1", "开场优化建议2"]
+  },
+  "pacing_analysis": {
+    "avg_highlight_interval": "平均小高潮间隔（秒）",
+    "highlights_count": "小高潮数量",
+    "density_rating": "高/中/低",
+    "slow_episodes": ["节奏较慢的集数"]
+  },
+  "emotional_scorecard": {
+    "sweetness": 8,
+    "angst": 7,
+    "satisfaction": 9,
+    "passion": 6,
+    "overall_intensity": "高"
+  },
+  "structure_analysis": {
+    "opening_duration": "开头时长（秒）",
+    "development_duration": "发展时长（秒）",
+    "climax_duration": "高潮时长（秒）",
+    "ending_duration": "结尾时长（秒）",
+    "structure_compliance": "符合/部分符合/不符合"
+  },
+  "viral_elements": [
+    "爆款元素1：具体说明",
+    "爆款元素2：具体说明",
+    "爆款元素3：具体说明"
+  ],
+  "missing_elements": [
+    "缺失元素1：具体说明",
+    "缺失元素2：具体说明"
+  ],
+  "memorable_scenes": ["名场面1", "名场面2"],
+  "golden_lines": ["金句1", "金句2"],
+  "optimization_priorities": {
+    "high": ["高优先级优化项1", "高优先级优化项2"],
+    "medium": ["中优先级优化项1"],
+    "low": ["低优先级优化项1"]
+  },
+  "success_probability_breakdown": {
+    "hook_score": 90,
+    "pacing_score": 85,
+    "emotion_score": 88,
+    "structure_score": 82,
+    "content_score": 80,
+    "operation_score": 75
+  },
+  "competitive_analysis": "与抖音成功爆剧的对比分析",
+  "viral_prediction": "详细的爆款潜力预测和说明",
+  "strengths": ["优点1", "优点2"],
+  "weaknesses": ["待改进点1", "待改进点2"],
+  "suggestions": ["具体建议1", "具体建议2"]
+}
+```
+
+## 评测标准说明
+
+**评分等级**：
+- 90-100分：🔥 必爆级 - 完全符合抖音爆剧标准，爆款概率极高
+- 80-89分：⭐ 高潜力 - 大部分符合标准，有很大爆款潜力
+- 70-79分：📈 中等潜力 - 基本符合标准，有爆款可能需要优化
+- 60-69分：⚠️ 潜力一般 - 部分符合标准，需要较大改进
+- <60分：❌ 不符合 - 不符合抖音爆剧标准，建议重构
+
+请对以下剧本进行评测：
+
+---
+{script_content}
+---

@@ -351,7 +351,7 @@ class ScriptEvaluator:
             progress_bar = None
 
         # 使用线程池并发执行
-        with ThreadPoolExecutor(max_workers=5) as executor:  # 最多5个并发
+        with ThreadPoolExecutor(max_workers=8) as executor:  # 最多8个并发（适配18个维度）
             # 提交所有评测任务
             future_to_dimension = {
                 executor.submit(self._evaluate_dimension, dimension, script_content): dimension

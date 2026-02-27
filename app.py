@@ -263,7 +263,10 @@ def evaluate():
         dimensions = request.form.get('dimensions')
         dimension_list = dimensions.split(',') if dimensions else None
 
-        # 保存文件
+        # 保存原始文件名（用于显示）
+        original_filename = file.filename.rsplit('.', 1)[0] if '.' in file.filename else file.filename
+
+        # 保存文件（使用 secure_filename 处理，避免文件系统问题）
         filename = secure_filename(file.filename)
         file_id = str(uuid.uuid4())[:8]
         script_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{file_id}_{filename}")
@@ -294,7 +297,7 @@ def evaluate():
                 raise RuntimeError(f"PDF 文件解析失败: {str(e)}")
 
         # 执行评测
-        logger.info(f"开始评测剧本: {filename}, 维度: {dimension_list}")
+        logger.info(f"开始评测剧本: {original_filename}, 维度: {dimension_list}")
         evaluator = ScriptEvaluator()
         result = evaluator.evaluate(actual_script_path, dimensions=dimension_list, show_progress=False)
         logger.info(f"评测完成，准备生成报告")
@@ -302,7 +305,7 @@ def evaluate():
         # 生成报告
         logger.info("开始生成报告...")
         report_generator = ReportGenerator(output_dir=app.config['OUTPUT_FOLDER'])
-        result['script_name'] = filename.rsplit('.', 1)[0]  # 去掉扩展名
+        result['script_name'] = original_filename  # 使用原始文件名
         logger.info(f"剧本名称: {result['script_name']}")
 
         # 预检查：验证数据是否可序列化
@@ -322,7 +325,7 @@ def evaluate():
                     logger.warning(f"跳过无法序列化的字段: {key}")
             result = result_clean
 
-        report_files = report_generator.generate(result, formats=['markdown', 'json'])
+        report_files = report_generator.generate(result, formats=['markdown', 'json', 'word', 'ppt'])
         logger.info(f"报告生成完成: {report_files}")
 
         # 获取报告文件名（用于下载）
