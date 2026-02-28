@@ -5,6 +5,7 @@
 
 import os
 import json
+import traceback
 from datetime import datetime
 from typing import Dict, Any, List
 from pathlib import Path
@@ -188,8 +189,11 @@ class ReportGenerator:
                     if "notable_lines" in dim_result:
                         f.write("#### 精彩台词\n\n")
                         for line in dim_result["notable_lines"]:
-                            f.write(f"> **{line.get('speaker', '')}**: {line.get('line', '')}\n")
-                            f.write(f"> \n> *{line.get('reason', '')}*\n\n")
+                            if isinstance(line, dict):
+                                f.write(f"> **{line.get('speaker', '')}**: {line.get('line', '')}\n")
+                                f.write(f"> \n> *{line.get('reason', '')}*\n\n")
+                            elif isinstance(line, str):
+                                f.write(f"> {line}\n\n")
 
                     if "character_analysis" in dim_result:
                         f.write("#### 人物分析\n\n")
