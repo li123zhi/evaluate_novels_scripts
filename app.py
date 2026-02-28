@@ -151,7 +151,7 @@ def clean_script_text(text: str) -> str:
 
     # 6. 移除不可见字符（保留换行、制表符、常用标点）
     # 保留中文、英文、数字、常用标点、换行符
-    text = re.sub(r'[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9\s\.,!?;:：，。！？；、\(\)\[\]""''《》·—·…～–—/=@#\\%\^&\*\+\|\{\}\<\>\n\r\t]', '', text)
+    text = re.sub(r'[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9\s\.,!?;:：，。！？；、\(\)\[\]""''《》·—·…～–—/=@#\\%\\^&\\*\\+\|\{\}\<\>\n\r\t]', '', text)
 
     # 7. 修复常见的格式问题
     # 修复括号不匹配问题（移除孤立的括号）
@@ -709,6 +709,298 @@ ending: [结局内容]
 请直接输出改进后的剧本内容，不要添加任何额外的解释说明或开场白。"""
 
     return prompt
+
+
+# ==================== 小说功能 API ====================
+
+@app.route('/api/novel/generate', methods=['POST'])
+def generate_novel():
+    """AI生成小说"""
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': '未请求数据'
+            }), 400
+
+        # 获取生成参数
+        params = {
+            'genre': data.get('genre', '都市'),
+            'style': data.get('style', '轻松'),
+            'length': data.get('length', 50000),
+            'chapters': data.get('chapters', 20),
+            'outline': data.get('outline', ''),
+            'characters': data.get('characters', []),
+            'world_setting': data.get('world_setting', ''),
+            'target_audience': data.get('target_audience', '年轻女性读者'),
+            'tone': data.get('tone', '轻松愉快'),
+            'theme': data.get('theme', '成长与爱情'),
+        }
+
+        logger.info(f"开始生成小说，题材：{params['genre']}, 字数：{params['length']}")
+
+        # 导入小说生成器
+        from src.novel_generator import NovelGenerator
+        from src.api_client import DoubaoAPIClient
+
+        api_client = DoubaoAPIClient()
+        novel_gen = NovelGenerator(api_client)
+
+        # 生成小说
+        result = novel_gen.generate_novel(params)
+
+        if result.get('success'):
+            logger.info(f"小说生成成功: {result.get('title')}")
+            return jsonify({
+                'success': True,
+                'novel': result
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', '生成失败')
+            }), 500
+
+    except Exception as e:
+        logger.error(f"生成小说异常: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/evaluate', methods=['POST'])
+def evaluate_novel():
+    """评测小说质量"""
+    try:
+        # 检查是否有文件上传
+        if 'file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': '未上传文件'
+            }), 400
+
+        file = request.files['file']
+
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': '未选择文件'
+            }), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({
+                'success': False,
+                'error': '不支持的文件格式，请上传TXT文件'
+            }), 400
+
+        logger.info(f"开始评测小说: {file.filename}")
+
+        # 保存文件
+        filename = secure_filename(file.filename)
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        unique_filename = f"novel_{timestamp}_{filename}"
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], unique_filename)
+        file.save(filepath)
+
+        # 读取小说内容
+        with open(filepath, 'r', encoding='utf-8') as f:
+            novel_content = f.read()
+
+        logger.info(f"小说读取成功，长度: {len(novel_content)} 字符")
+
+        # 构建评测prompt
+        prompt_template_path = Path(__file__).parent / 'prompts' / 'novel' / 'novel_evaluation.txt'
+        prompt_template = prompt_template_path.read_text(encoding='utf-8')
+        prompt = prompt_template.replace('{novel_content}', novel_content[:50000])  # 限制长度
+
+        # 调用API评测
+        from src.api_client import DoubaoAPIClient
+        api_client = DoubaoAPIClient()
+
+        response = api_client.chat(
+            prompt,
+            "你是一位专业的网络小说编辑和评论家。"
+        )
+
+        # 解析评测结果
+        import json
+        try:
+            evaluation_result = json.loads(response)
+        except json.JSONDecodeError:
+            # 如果解析失败，返回原始文本
+            evaluation_result = {
+                'raw_response': response
+            }
+
+        logger.info("小说评测完成")
+
+        return jsonify({
+            'success': True,
+            'evaluation': evaluation_result,
+            'novel_name': file.filename.rsplit('.', 1)[0],
+            'file_path': filepath
+        })
+
+    except Exception as e:
+        logger.error(f"评测小说异常: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/script-to-novel', methods=['POST'])
+def script_to_novel():
+    """剧本改写成小说"""
+    try:
+        # 检查是否有文件上传
+        if 'file' not in request.files:
+            return jsonify({
+                'success': False,
+                'error': '未上传文件'
+            }), 400
+
+        file = request.files['file']
+
+        if file.filename == '':
+            return jsonify({
+                'success': False,
+                'error': '未选择文件'
+            }), 400
+
+        if not allowed_file(file.filename):
+            return jsonify({
+                'success': False,
+                'error': '不支持的文件格式，请上传TXT文件'
+            }), 400
+
+        # 获取改写参数
+        params = {
+            'style': request.form.get('style', '详实'),
+            'expand_psychology': request.form.get('expand_psychology', 'true').lower() == 'true',
+            'expand_environment': request.form.get('expand_environment', 'true').lower() == 'true',
+            'first_person': request.form.get('first_person', 'false').lower() == 'true',
+        }
+
+        logger.info(f"开始剧本改小说: {file.filename}, 风格：{params['style']}")
+
+        # 保存并读取文件
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+        file.save(filepath)
+
+        with open(filepath, 'r', encoding='utf-8') as f:
+            script_content = f.read()
+
+        # 导入小说生成器
+        from src.novel_generator import NovelGenerator
+        from src.api_client import DoubaoAPIClient
+
+        api_client = DoubaoAPIClient()
+        novel_gen = NovelGenerator(api_client)
+
+        # 改写
+        result = novel_gen.script_to_novel(script_content, params)
+
+        if result.get('success'):
+            # 保存改写后的小说
+            timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+            novel_filename = f"novel_{timestamp}_{filename.rsplit('.', 1)[0]}.txt"
+            novel_path = os.path.join(app.config['OUTPUT_FOLDER'], novel_filename)
+
+            with open(novel_path, 'w', encoding='utf-8') as f:
+                f.write(result['content'])
+
+            logger.info(f"剧本改小说完成: {novel_filename}")
+
+            return jsonify({
+                'success': True,
+                'novel_content': result['content'],
+                'novel_path': novel_path,
+                'novel_filename': novel_filename
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', '改写失败')
+            }), 500
+
+    except Exception as e:
+        logger.error(f"剧本改小说异常: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/improve', methods=['POST'])
+def improve_novel():
+    """AI改进小说"""
+    try:
+        data = request.get_json()
+
+        if not data:
+            return jsonify({
+                'success': False,
+                'error': '未请求数据'
+            }), 400
+
+        novel_content = data.get('novel_content', '')
+        evaluation_result = data.get('evaluation_result', {})
+        improvement_focus = data.get('improvement_focus', [])
+
+        if not novel_content:
+            return jsonify({
+                'success': False,
+                'error': '缺少小说内容'
+            }), 400
+
+        if not improvement_focus:
+            return jsonify({
+                'success': False,
+                'error': '缺少改进重点'
+            }), 400
+
+        logger.info(f"开始AI改进小说，重点：{improvement_focus}")
+
+        # 导入小说生成器
+        from src.novel_generator import NovelGenerator
+        from src.api_client import DoubaoAPIClient
+
+        api_client = DoubaoAPIClient()
+        novel_gen = NovelGenerator(api_client)
+
+        # 改进
+        result = novel_gen.improve_novel(novel_content, evaluation_result, improvement_focus)
+
+        if result.get('success'):
+            logger.info("AI改进小说完成")
+
+            return jsonify({
+                'success': True,
+                'improved_content': result['improved_content'],
+                'focus_areas': result['focus_areas'],
+                'issues_addressed': result['issues_addressed']
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result.get('error', '改进失败')
+            }), 500
+
+    except Exception as e:
+        logger.error(f"AI改进小说异常: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 if __name__ == '__main__':

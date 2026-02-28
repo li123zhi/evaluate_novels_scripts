@@ -485,6 +485,91 @@
         .report-view strong {
             font-weight: 600;
         }
+        /* Tab样式 */
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            justify-content: center;
+        }
+        .tab {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            border-radius: 8px;
+            padding: 12px 30px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: 500;
+        }
+        .tab:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        .tab.active {
+            background: white;
+            color: var(--primary);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        /* 小说选项卡样式 */
+        .novel-options {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .novel-option {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 12px;
+            padding: 30px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            color: white;
+        }
+        .novel-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+        .option-icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+        .novel-option h3 {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+        .novel-option p {
+            font-size: 14px;
+            opacity: 0.9;
+            line-height: 1.5;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: var(--gray-800);
+        }
+        .form-control {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        textarea.form-control {
+            resize: vertical;
+            min-height: 80px;
+        }
     </style>
 </head>
 <body>
@@ -492,11 +577,26 @@
     <div id="app">
         <div class="container">
             <div class="header">
-                <h1>🎬 AI 剧本评测系统</h1>
-                <p>基于豆包 seed-1.8 模型的短剧剧本质量评测</p>
+                <h1>🎬 AI 内容创作与评测系统</h1>
+                <p>基于豆包 seed-1.8 模型的智能创作与质量评测</p>
             </div>
 
-            <!-- 上传页面 -->
+            <!-- Tab切换 -->
+            <div class="tabs">
+                <button class="tab"
+                        :class="{ active: activeTab === 'script' }"
+                        @click="activeTab = 'script'">
+                    📝 剧本评测
+                </button>
+                <button class="tab"
+                        :class="{ active: activeTab === 'novel' }"
+                        @click="activeTab = 'novel'">
+                    📖 小说创作
+                </button>
+            </div>
+
+            <!-- 剧本评测 -->
+            <div v-show="activeTab === 'script'">
             <div class="card" v-if="stage === 'upload'">
                 <div class="upload-area"
                      :class="{ dragover: isDragOver }"
@@ -928,6 +1028,97 @@
                     </div>
                 </div>
             </div>
+            </div>  <!-- 关闭剧本评测的 v-show div -->
+
+            <!-- 小说创作 -->
+            <div v-show="activeTab === 'novel'">
+                <!-- 小说功能选择 -->
+                <div class="card" v-if="novelStage === 'select'">
+                    <h2 style="margin-bottom: 20px;">📖 选择小说功能</h2>
+                    <div class="novel-options">
+                        <div class="novel-option" @click="novelStage = 'generate'">
+                            <div class="option-icon">✨</div>
+                            <h3>AI生成小说</h3>
+                            <p>根据题材、风格、大纲等参数，AI自动生成完整小说</p>
+                        </div>
+                        <div class="novel-option" @click="selectNovelFile()">
+                            <div class="option-icon">📊</div>
+                            <h3>评测小说质量</h3>
+                            <p>上传小说文件，AI评测文笔、人物、情节等方面</p>
+                        </div>
+                        <div class="novel-option" @click="selectScriptFile()">
+                            <div class="option-icon">🔄</div>
+                            <h3>剧本改小说</h3>
+                            <p>上传剧本文件，AI改写成小说格式</p>
+                        </div>
+                        <div class="novel-option" @click="novelStage = 'improve'">
+                            <div class="option-icon">🔧</div>
+                            <h3>AI改进小说</h3>
+                            <p>根据评测结果，AI针对性改进小说内容</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI生成小说 -->
+                <div class="card" v-if="novelStage === 'generate'">
+                    <h2 style="margin-bottom: 20px;">✨ AI生成小说</h2>
+                    <div class="form-group">
+                        <label>题材</label>
+                        <select v-model="novelParams.genre" class="form-control">
+                            <option>都市</option>
+                            <option>玄幻</option>
+                            <option>仙侠</option>
+                            <option>科幻</option>
+                            <option>言情</option>
+                            <option>历史</option>
+                            <option>网游</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>风格</label>
+                        <select v-model="novelParams.style" class="form-control">
+                            <option>轻松</option>
+                            <option>热血</option>
+                            <option>沉重</option>
+                            <option>幽默</option>
+                            <option>文艺</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>字数</label>
+                        <input type="number" v-model="novelParams.length" class="form-control" placeholder="50000">
+                    </div>
+                    <div class="form-group">
+                        <label>章节数</label>
+                        <input type="number" v-model="novelParams.chapters" class="form-control" placeholder="20">
+                    </div>
+                    <div class="form-group">
+                        <label>大纲（可选）</label>
+                        <textarea v-model="novelParams.outline" class="form-control" rows="5" placeholder="请输入故事大纲..."></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>人物设定（可选）</label>
+                        <textarea v-model="novelParams.charactersInput" class="form-control" rows="3" placeholder="例：主角张三，25岁，性格豪爽..."></textarea>
+                    </div>
+                    <div class="btn-group">
+                        <button class="btn btn-primary" @click="generateNovel">开始生成</button>
+                        <button class="btn btn-secondary" @click="novelStage = 'select'">返回</button>
+                    </div>
+                </div>
+
+                <!-- 小说评测结果 -->
+                <div class="card" v-if="novelStage === 'novelResult'">
+                    <h2 style="margin-bottom: 20px;">📊 小说评测结果</h2>
+                    <div v-if="novelEvaluation">
+                        <div class="score-display">
+                            <div class="score-number">{{ novelEvaluation.total_score || 'N/A' }}</div>
+                            <div class="score-label">总分</div>
+                        </div>
+                        <!-- 更多评测结果展示 -->
+                    </div>
+                    <button class="btn btn-secondary" @click="novelStage = 'select'">返回</button>
+                </div>
+            </div>
         </div>
     </div>
     {% endraw %}
@@ -963,7 +1154,26 @@
                     improving: false,
                     showModal: false,
                     improvedScript: null,
-                    originalScriptContent: null
+                    originalScriptContent: null,
+                    // 新增：Tab和小说功能
+                    activeTab: 'script',
+                    novelStage: 'select',
+                    novelParams: {
+                        genre: '都市',
+                        style: '轻松',
+                        length: 50000,
+                        chapters: 20,
+                        outline: '',
+                        charactersInput: '',
+                        characters: [],
+                        world_setting: '',
+                        target_audience: '年轻女性读者',
+                        tone: '轻松愉快',
+                        theme: '成长与爱情'
+                    },
+                    novelEvaluation: null,
+                    novelFile: null,
+                    novelFileName: ''
                 }
             },
             methods: {
@@ -1277,6 +1487,106 @@
                     document.body.removeChild(link)
 
                     this.showError(`${format.toUpperCase()} 报告下载成功！`)
+                },
+                // ========== 小说功能方法 ==========
+                // AI生成小说
+                async generateNovel() {
+                    try {
+                        // 处理人物输入
+                        if (this.novelParams.charactersInput) {
+                            const lines = this.novelParams.charactersInput.split('\n').filter(l => l.trim())
+                            this.novelParams.characters = lines.map(line => {
+                                const parts = line.split(/[：:]/)
+                                return {
+                                    name: parts[0] || '未命名',
+                                    description: parts[1] || ''
+                                }
+                            })
+                        }
+
+                        const response = await axios.post('/api/novel/generate', this.novelParams)
+
+                        if (response.data.success) {
+                            this.novelStage = 'novelResult'
+                            this.showError('小说生成成功！')
+                            // 可以保存生成的小说
+                        } else {
+                            this.showError('生成失败：' + (response.data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        console.error('生成小说失败:', error)
+                        this.showError('生成失败：' + (error.response?.data?.error || error.message))
+                    }
+                },
+                // 选择小说文件进行评测
+                selectNovelFile() {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = '.txt'
+                    input.onchange = async (e) => {
+                        const file = e.target.files[0]
+                        if (!file) return
+
+                        this.novelFile = file
+                        this.novelFileName = file.name
+
+                        const formData = new FormData()
+                        formData.append('file', file)
+
+                        try {
+                            const response = await axios.post('/api/novel/evaluate', formData, {
+                                headers: { 'Content-Type': 'multipart/form-data' }
+                            })
+
+                            if (response.data.success) {
+                                this.novelEvaluation = response.data.evaluation
+                                this.novelStage = 'novelResult'
+                                this.showError('评测完成！')
+                            } else {
+                                this.showError('评测失败：' + (response.data.error || '未知错误'))
+                            }
+                        } catch (error) {
+                            console.error('评测失败:', error)
+                            this.showError('评测失败：' + (error.response?.data?.error || error.message))
+                        }
+                    }
+                    input.click()
+                },
+                // 选择剧本文件改写成小说
+                selectScriptFile() {
+                    const input = document.createElement('input')
+                    input.type = 'file'
+                    input.accept = '.txt'
+                    input.onchange = async (e) => {
+                        const file = e.target.files[0]
+                        if (!file) return
+
+                        const formData = new FormData()
+                        formData.append('file', file)
+                        formData.append('style', '详实')
+                        formData.append('expand_psychology', 'true')
+                        formData.append('expand_environment', 'true')
+                        formData.append('first_person', 'false')
+
+                        try {
+                            const response = await axios.post('/api/novel/script-to-novel', formData, {
+                                headers: { 'Content-Type': 'multipart/form-data' }
+                            })
+
+                            if (response.data.success) {
+                                this.showError('改写成功！')
+                                // 可以显示或下载改写后的小说
+                                // 下载文件
+                                window.open(`/outputs/${response.data.novel_filename}`, '_blank')
+                            } else {
+                                this.showError('改写失败：' + (response.data.error || '未知错误'))
+                            }
+                        } catch (error) {
+                            console.error('改写失败:', error)
+                            this.showError('改写失败：' + (error.response?.data?.error || error.message))
+                        }
+                    }
+                    input.click()
                 }
             },
             mounted() {
