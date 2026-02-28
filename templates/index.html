@@ -492,8 +492,17 @@
     <div id="app">
         <div class="container">
             <div class="header">
-                <h1>🎬 AI 剧本评测系统</h1>
-                <p>基于豆包 seed-1.8 模型的短剧剧本质量评测</p>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <h1>🎬 AI 剧本评测系统</h1>
+                        <p>基于豆包 seed-1.8 模型的短剧剧本质量评测</p>
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" @click="showHistoryPage" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
+                            📜 历史记录
+                        </button>
+                    </div>
+                </div>
             </div>
 
             <!-- 上传页面 -->
@@ -553,22 +562,143 @@
                 </div>
             </div>
 
+            <!-- 历史记录页面 -->
+            <div class="card" v-if="stage === 'history'">
+                <!-- 页面标题和返回按钮 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button
+                            @click="back"
+                            style="padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; display: flex; align-items: center; gap: 8px;"
+                        >
+                            ← 返回
+                        </button>
+                        <h2 style="margin: 0; font-size: 1.8rem; color: var(--gray-800);">📜 评测历史记录</h2>
+                    </div>
+                    <button
+                        class="btn btn-secondary"
+                        @click="importHistory"
+                        :disabled="importing"
+                        style="padding: 10px 20px; font-size: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer;"
+                    >
+                        {{ importing ? '⏳ 导入中...' : '📥 导入旧记录' }}
+                    </button>
+                </div>
+
+                <!-- 统计信息 -->
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 25px;">
+                    <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; border-radius: 8px; color: white; text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold;">{{ statistics.total_evaluations || 0 }}</div>
+                        <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">总评测数</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); padding: 20px; border-radius: 8px; color: white; text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold;">{{ statistics.average_score || 0 }}</div>
+                        <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">平均分</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); padding: 20px; border-radius: 8px; color: white; text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold;">{{ statistics.score_distribution?.['优秀(80-100)'] || 0 }}</div>
+                        <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">优秀作品</div>
+                    </div>
+                    <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); padding: 20px; border-radius: 8px; color: white; text-align: center;">
+                        <div style="font-size: 28px; font-weight: bold;">{{ statistics.score_distribution?.['良好(60-79)'] || 0 }}</div>
+                        <div style="font-size: 14px; opacity: 0.9; margin-top: 5px;">良好作品</div>
+                    </div>
+                </div>
+
+                <!-- 搜索框 -->
+                <div style="margin-bottom: 20px;">
+                    <input
+                        type="text"
+                        v-model="historySearch"
+                        placeholder="🔍 搜索剧本名称..."
+                        class="form-control"
+                        @input="loadHistory"
+                        style="padding: 12px 15px; border: 1px solid var(--gray-200); border-radius: 8px; width: 100%; font-size: 15px;"
+                    >
+                </div>
+
+                <!-- 历史记录列表 -->
+                <div v-if="historyRecords.length > 0" style="display: grid; gap: 15px;">
+                    <div
+                        v-for="record in historyRecords"
+                        :key="record.id"
+                        class="history-item"
+                        style="background: var(--gray-50); padding: 20px; border-radius: 10px; border-left: 4px solid var(--primary); cursor: pointer; transition: all 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"
+                        @click="viewHistoryRecord(record)"
+                        @mouseover="$el.style.transform = 'translateX(5px); box-shadow: 0 4px 12px rgba(0,0,0,0.1)'"
+                        @mouseout="$el.style.transform = 'translateX(0); box-shadow: 0 2px 4px rgba(0,0,0,0.05)'"
+                    >
+                        <div style="display: flex; justify-content: space-between; align-items: start;">
+                            <div style="flex: 1;">
+                                <h4 style="margin: 0 0 8px 0; color: var(--gray-800); font-size: 1.1rem;">{{ record.script_name }}</h4>
+                                <p style="margin: 5px 0; color: var(--gray-600); font-size: 14px;">📅 {{ record.timestamp }}</p>
+                                <div style="margin-top: 12px; display: flex; align-items: center; gap: 10px;">
+                                    <span
+                                        :style="{
+                                            background: getScoreColor(record.overall_score, record.overall_max_score),
+                                            color: 'white',
+                                            padding: '6px 14px',
+                                            borderRadius: '20px',
+                                            fontSize: '14px',
+                                            fontWeight: '600'
+                                        }"
+                                    >
+                                        ⭐ {{ record.overall_score }}/{{ record.overall_max_score }}
+                                    </span>
+                                    <span style="color: var(--gray-600); font-size: 14px; font-weight: 500;">{{ record.level }}</span>
+                                </div>
+                            </div>
+                            <button
+                                class="btn btn-secondary"
+                                @click.stop="deleteHistoryRecord(record.id)"
+                                @mouseover="event.target.style.background = '#dc2626'"
+                                @mouseout="event.target.style.background = '#ef4444'"
+                                style="padding: 8px 15px; font-size: 13px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; transition: all 0.2s;"
+                            >
+                                🗑️ 删除
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div v-else style="text-align: center; padding: 60px 20px; color: var(--gray-600);">
+                    <div style="font-size: 64px; margin-bottom: 20px;">📭</div>
+                    <p style="font-size: 1.1rem;">暂无历史记录</p>
+                    <p style="font-size: 0.9rem; margin-top: 10px; color: var(--gray-600);">点击"导入旧记录"按钮可导入之前的评测结果</p>
+                </div>
+
+                <!-- 加载更多 -->
+                <div v-if="hasMoreHistory" style="text-align: center; margin-top: 25px;">
+                    <button class="btn btn-secondary" @click="loadMoreHistory" style="padding: 12px 35px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 15px;">
+                        📄 加载更多
+                    </button>
+                </div>
+            </div>
+
             <!-- 评测结果 - 详细报告格式 -->
-            <div class="card report-view" v-if="stage === 'results' && result">
+            <div class="card report-view" v-if="stage === 'results' && (result || historyResult)">
                 <!-- 标题 -->
-                <div style="text-align: center; margin-bottom: 30px;">
-                    <h1 style="margin: 0 0 10px 0; font-size: 2rem; color: var(--gray-800);">📊 《{{ result.script_name || '剧本' }}》剧本评测报告</h1>
-                    <p style="color: var(--gray-600); margin: 5px 0;">生成时间: {{ result.timestamp || new Date().toLocaleString('zh-CN') }}</p>
+                <div style="text-align: center; margin-bottom: 30px; position: relative;">
+                    <!-- 返回按钮（仅在查看历史记录时显示） -->
+                    <button
+                        v-if="viewingHistory"
+                        @click="back"
+                        style="position: absolute; left: 0; top: 0; padding: 10px 20px; background: var(--primary); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px;"
+                    >
+                        ← 返回
+                    </button>
+                    <h1 style="margin: 0 0 10px 0; font-size: 2rem; color: var(--gray-800);">📊 《{{ (historyResult || result).script_name || '剧本' }}》剧本评测报告</h1>
+                    <p style="color: var(--gray-600); margin: 5px 0;">{{ viewingHistory ? '📜 历史评测记录 - ' : '' }}生成时间: {{ (historyResult || result).timestamp || new Date().toLocaleString('zh-CN') }}</p>
                 </div>
 
                 <!-- 综合评分 -->
                 <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 25px; border-radius: 12px; text-align: center; margin-bottom: 30px; color: white;">
                     <h2 style="margin: 0 0 15px 0; font-size: 1.3rem;">综合评分</h2>
                     <div style="font-size: 2.5rem; font-weight: 700; margin-bottom: 10px;">
-                        {{ result.overall.total_score }}/100
+                        {{ (historyResult || result).overall.total_score }}/100
                     </div>
                     <div style="font-size: 1.2rem;">
-                        等级: <strong>{{ result.overall.grade }}</strong>
+                        等级: <strong>{{ (historyResult || result).overall.grade }}</strong>
                     </div>
                 </div>
 
@@ -585,7 +715,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="item in result.overall.details" :key="item.dimension" style="border-bottom: 1px solid var(--gray-200);">
+                        <tr v-for="item in (historyResult || result).overall.details" :key="item.dimension" style="border-bottom: 1px solid var(--gray-200);">
                             <td style="padding: 12px;">{{ item.dimension }}</td>
                             <td style="padding: 12px; text-align: center;">
                                 <span :style="{ color: getScoreColor(item.score, item.max_score), fontWeight: 600 }">
@@ -604,12 +734,12 @@
 
                 <!-- 调试信息 -->
                 <div style="background: #fff3cd; padding: 10px; margin-bottom: 15px; border-radius: 8px; font-size: 11px;">
-                    <strong>DEBUG:</strong> stage={{ stage }}, has result={{ !!result }}, dimensions count={{ Object.keys(result?.dimensions || {}).length }}
+                    <strong>DEBUG:</strong> stage={{ stage }}, has result={{ !!result }}, has historyResult={{ !!historyResult }}, dimensions count={{ Object.keys((historyResult || result)?.dimensions || {}).length }}
                 </div>
 
                 <!-- 各维度详细分析 -->
                 <!-- 调试：显示所有维度 -->
-                <div v-for="(dim, key) in result.dimensions" :key="key" style="margin-bottom: 10px;">
+                <div v-for="(dim, key) in (historyResult || result).dimensions" :key="key" style="margin-bottom: 10px;">
                     <div style="background: #e3f2fd; padding: 8px; font-size: 10px; border-radius: 4px;">
                         DEBUG [{{ key }}]: dim exists={{ !!dim }}, has error={{ !!dim?.error }}, has sub_scores={{ !!dim?.sub_scores }}, name={{ dim?.dimension_name }}
                     </div>
@@ -963,10 +1093,40 @@
                     improving: false,
                     showModal: false,
                     improvedScript: null,
-                    originalScriptContent: null
+                    originalScriptContent: null,
+                    // 历史记录
+                    historyRecords: [],
+                    historySearch: '',
+                    hasMoreHistory: false,
+                    statistics: {
+                        total_evaluations: 0,
+                        average_score: 0,
+                        score_distribution: {}
+                    },
+                    importing: false,
+                    // 历史记录详情（单独存储，不覆盖当前评测结果）
+                    historyResult: null,
+                    viewingHistory: false,
+                    // 导航历史栈
+                    navigationHistory: [],
+                    previousStage: null
                 }
             },
+            computed: {
+                currentResult() {
+                    // 返回当前显示的结果（历史记录或新评测结果）
+                    return this.historyResult || this.result
+                }
+            },
+            beforeMount() {
+                // 添加一个全局引用方便在模板中使用
+                this.$options.computed.currentResult = () => this.historyResult || this.result
+            },
             methods: {
+                $$(key) {
+                    // 简化访问当前结果的属性
+                    return this.historyResult || this.result
+                },
                 async loadDimensions() {
                     try {
                         const res = await axios.get('/api/dimensions')
@@ -1067,7 +1227,14 @@
                             console.log('评测成功，设置结果...')
                             console.log('结果数据:', res.data.result)
                             console.log('维度数据:', res.data.result.dimensions)
+
+                            // 保存当前stage到历史栈（从upload页面来的）
+                            this.navigationHistory.push('upload')
+                            this.previousStage = 'upload'
+
                             this.result = res.data.result
+                            this.historyResult = null  // 清空历史记录
+                            this.viewingHistory = false  // 标记为新评测
                             this.stage = 'results'
                             console.log('结果页面显示，stage:', this.stage)
                         } else {
@@ -1099,9 +1266,13 @@
                     this.file = null
                     this.fileName = ''
                     this.result = null
+                    this.historyResult = null
+                    this.viewingHistory = false
                     this.progress = 0
                     this.error = ''
-                    this.$refs.fileInput.value = ''
+                    if (this.$refs.fileInput) {
+                        this.$refs.fileInput.value = ''
+                    }
                 },
                 showError(msg) {
                     this.error = msg
@@ -1277,10 +1448,194 @@
                     document.body.removeChild(link)
 
                     this.showError(`${format.toUpperCase()} 报告下载成功！`)
+                },
+                // ========== 历史记录方法 ==========
+                // 显示历史记录页面
+                async showHistoryPage() {
+                    // 保存当前stage到历史栈
+                    this.navigationHistory.push(this.stage)
+                    this.previousStage = this.stage
+                    this.stage = 'history'
+                    await this.loadHistory()
+                    await this.loadStatistics()
+                },
+                // 加载历史记录
+                async loadHistory() {
+                    try {
+                        const response = await axios.get('/api/history', {
+                            params: {
+                                limit: 20,
+                                offset: 0,
+                                search: this.historySearch || undefined
+                            }
+                        })
+
+                        if (response.data.success) {
+                            // 按时间倒序排序（最近的在前面）
+                            this.historyRecords = response.data.records.sort((a, b) => {
+                                return new Date(b.timestamp) - new Date(a.timestamp)
+                            })
+                            this.hasMoreHistory = response.data.records.length >= response.data.limit
+                        }
+                    } catch (error) {
+                        console.error('加载历史记录失败:', error)
+                    }
+                },
+                // 加载更多历史记录
+                async loadMoreHistory() {
+                    try {
+                        const response = await axios.get('/api/history', {
+                            params: {
+                                limit: 20,
+                                offset: this.historyRecords.length,
+                                search: this.historySearch || undefined
+                            }
+                        })
+
+                        if (response.data.success) {
+                            // 添加新记录并重新排序
+                            this.historyRecords.push(...response.data.records)
+                            this.historyRecords.sort((a, b) => {
+                                return new Date(b.timestamp) - new Date(a.timestamp)
+                            })
+                            this.hasMoreHistory = response.data.records.length >= response.data.limit
+                        }
+                    } catch (error) {
+                        console.error('加载更多历史记录失败:', error)
+                    }
+                },
+                // 加载统计信息
+                async loadStatistics() {
+                    try {
+                        const response = await axios.get('/api/history/statistics')
+
+                        if (response.data.success) {
+                            this.statistics = response.data.statistics
+                        }
+                    } catch (error) {
+                        console.error('加载统计信息失败:', error)
+                    }
+                },
+                // 查看历史记录详情
+                async viewHistoryRecord(record) {
+                    try {
+                        this.showError('正在加载评测记录...')
+
+                        // 加载完整的评测结果
+                        const response = await axios.get(`/api/history/${record.id}`, {
+                            params: { full: true }
+                        })
+
+                        if (response.data.success) {
+                            const fullResult = response.data.record
+
+                            // 保存当前stage到历史栈
+                            this.navigationHistory.push(this.stage)
+                            this.previousStage = this.stage
+
+                            // 设置历史记录结果并切换到详情页面
+                            this.historyResult = fullResult
+                            this.viewingHistory = true
+                            this.stage = 'results'  // 切换到结果页面
+
+                            this.showError('历史记录加载成功！')
+                        } else {
+                            this.showError('加载失败')
+                        }
+                    } catch (error) {
+                        console.error('查看历史记录失败:', error)
+                        this.showError('加载失败：' + (error.response?.data?.error || error.message))
+                    }
+                },
+                // 返回上一个页面
+                back() {
+                    if (this.navigationHistory.length > 0) {
+                        // 从历史栈中取出上一个stage
+                        const previousStage = this.navigationHistory.pop()
+                        this.previousStage = this.stage
+                        this.stage = previousStage
+
+                        // 如果返回到上传页面，清空结果
+                        if (previousStage === 'upload') {
+                            this.result = null
+                            this.historyResult = null
+                            this.viewingHistory = false
+                        }
+                        // 如果返回到历史记录页面，清空历史详情
+                        else if (previousStage === 'history') {
+                            this.historyResult = null
+                            this.viewingHistory = false
+                        }
+                    } else {
+                        // 如果没有历史记录，默认返回上传页面
+                        this.previousStage = this.stage
+                        this.stage = 'upload'
+                        this.result = null
+                        this.historyResult = null
+                        this.viewingHistory = false
+                    }
+                },
+                // 删除历史记录
+                async deleteHistoryRecord(recordId) {
+                    if (!confirm('确定要删除这条记录吗？')) return
+
+                    try {
+                        const response = await axios.delete(`/api/history/${recordId}`)
+
+                        if (response.data.success) {
+                            this.showError('删除成功')
+                            this.loadHistory()
+                            this.loadStatistics()
+                        }
+                    } catch (error) {
+                        console.error('删除历史记录失败:', error)
+                        this.showError('删除失败')
+                    }
+                },
+                // 导入历史记录
+                async importHistory() {
+                    if (!confirm('确定要从outputs目录导入之前的评测记录吗？\n\n这将扫描outputs目录中的JSON文件并导入到历史记录系统中。')) return
+
+                    this.importing = true
+
+                    try {
+                        const response = await axios.post('/api/history/import')
+
+                        if (response.data.success) {
+                            const { total, imported, skipped, failed, message } = response.data
+
+                            let alertMessage = `导入完成！\n\n${message}`
+
+                            if (imported > 0) {
+                                alertMessage += `\n\n已导入 ${imported} 条记录`
+                                this.loadHistory()
+                                this.loadStatistics()
+                            }
+
+                            if (skipped > 0) {
+                                alertMessage += `\n跳过 ${skipped} 条（已存在）`
+                            }
+
+                            if (failed > 0) {
+                                alertMessage += `\n失败 ${failed} 条`
+                            }
+
+                            alert(alertMessage)
+                        } else {
+                            this.showError('导入失败：' + (response.data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        console.error('导入历史记录失败:', error)
+                        this.showError('导入失败：' + (error.response?.data?.error || error.message))
+                    } finally {
+                        this.importing = false
+                    }
                 }
             },
             mounted() {
                 this.loadDimensions()
+                this.loadHistory()
+                this.loadStatistics()
             }
         }).mount('#app')
     </script>

@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.evaluator import ScriptEvaluator
 from src.report_generator import ReportGenerator
+from src.history_manager import HistoryManager
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 最大 50MB
@@ -31,6 +32,9 @@ app.config['OUTPUT_FOLDER'] = os.path.join(os.path.dirname(__file__), 'outputs')
 # 确保目录存在
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
+
+# 初始化历史记录管理器
+history_manager = HistoryManager()
 
 # 允许的文件扩展名
 ALLOWED_EXTENSIONS = {'txt'}
@@ -330,6 +334,14 @@ def evaluate():
 
         # 获取报告文件名（用于下载）
         result['report_files'] = [os.path.basename(f) for f in report_files]
+
+        # 保存历史记录
+        try:
+            record_id = history_manager.add_record(result)
+            result['record_id'] = record_id
+            logger.info(f"历史记录已保存: {record_id}")
+        except Exception as e:
+            logger.error(f"保存历史记录失败: {str(e)}")
 
         # 清理上传的临时文件
         logger.info("清理临时文件...")
@@ -709,6 +721,151 @@ ending: [结局内容]
 请直接输出改进后的剧本内容，不要添加任何额外的解释说明或开场白。"""
 
     return prompt
+
+
+# ==================== 历史记录 API ====================
+
+@app.route('/api/history', methods=['GET'])
+def get_history():
+    """获取评测历史记录列表"""
+    try:
+        limit = request.args.get('limit', 20, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        search = request.args.get('search', None)
+
+        result = history_manager.get_records(limit=limit, offset=offset, search=search)
+
+        return jsonify({
+            'success': True,
+            **result
+        })
+
+    except Exception as e:
+        logger.error(f"获取历史记录失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/history/<record_id>', methods=['GET'])
+def get_history_record(record_id):
+    """获取单个历史记录详情"""
+    try:
+        load_full = request.args.get('full', 'false').lower() == 'true'
+        record = history_manager.get_record(record_id, load_full=load_full)
+
+        if record is None:
+            return jsonify({
+                'success': False,
+                'error': '记录不存在'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'record': record
+        })
+
+    except Exception as e:
+        logger.error(f"获取历史记录详情失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/history/<record_id>', methods=['DELETE'])
+def delete_history_record(record_id):
+    """删除历史记录"""
+    try:
+        success = history_manager.delete_record(record_id)
+
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': '记录不存在或删除失败'
+            }), 404
+
+        return jsonify({
+            'success': True,
+            'message': '删除成功'
+        })
+
+    except Exception as e:
+        logger.error(f"删除历史记录失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/history/clear', methods=['POST'])
+def clear_history():
+    """清空所有历史记录"""
+    try:
+        success = history_manager.clear_all()
+
+        if not success:
+            return jsonify({
+                'success': False,
+                'error': '清空失败'
+            }), 500
+
+        return jsonify({
+            'success': True,
+            'message': '历史记录已清空'
+        })
+
+    except Exception as e:
+        logger.error(f"清空历史记录失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/history/statistics', methods=['GET'])
+def get_history_statistics():
+    """获取历史记录统计信息"""
+    try:
+        stats = history_manager.get_statistics()
+
+        return jsonify({
+            'success': True,
+            'statistics': stats
+        })
+
+    except Exception as e:
+        logger.error(f"获取统计信息失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/history/import', methods=['POST'])
+def import_history():
+    """从outputs目录导入历史评测记录"""
+    try:
+        result = history_manager.import_from_outputs()
+
+        if result.get('success'):
+            return jsonify(result)
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        logger.error(f"导入历史记录失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 
 if __name__ == '__main__':

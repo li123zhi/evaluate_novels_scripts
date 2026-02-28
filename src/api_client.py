@@ -25,7 +25,9 @@ class DoubaoAPIClient:
         max_tokens: int = 4000,
         temperature: float = 0.7,
         timeout: int = 300,  # 5分钟超时
-        max_retries: int = 3
+        max_retries: int = 3,
+        thinking_mode: str = "auto",  # 思考模式: enabled/disabled/auto
+        reasoning_effort: Optional[str] = None  # 思考强度: no_think/think-low/think-medium/think-high
     ):
         """
         初始化 API 客户端
@@ -38,22 +40,79 @@ class DoubaoAPIClient:
             temperature: 温度参数
             timeout: 请求超时时间（秒）
             max_retries: 最大重试次数
+            thinking_mode: 思考模式 (enabled/disabled/auto)
+            reasoning_effort: 思考强度档位 (no_think/think-low/think-medium/think-high)
         """
         self.api_key = api_key or os.getenv("ARK_API_KEY")
         base_url = api_url or os.getenv("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
         self.model_endpoint = model_name or os.getenv("MODEL_ENDPOINT", "ep-20260112180849-626fn")
         self.api_url = f"{base_url}/chat/completions"
         self.max_tokens = max_tokens
-        self.temperature = temperature
         self.timeout = timeout
         self.max_retries = max_retries
+
+        # 处理思考强度档位映射
+        self.reasoning_effort = reasoning_effort
+        if reasoning_effort:
+            self._apply_reasoning_effort(reasoning_effort)
+        else:
+            self.thinking_mode = thinking_mode
+            self.temperature = temperature
 
         # 从环境变量读取配置
         self.timeout = int(os.getenv("API_TIMEOUT", str(timeout)))
         self.max_tokens = int(os.getenv("MAX_TOKENS", str(max_tokens)))
 
+        # 优先使用 REASONING_EFFORT 配置
+        reasoning_effort_env = os.getenv("REASONING_EFFORT")
+        if reasoning_effort_env and reasoning_effort_env in ["no_think", "think-low", "think-medium", "think-high"]:
+            self._apply_reasoning_effort(reasoning_effort_env)
+            self.reasoning_effort = reasoning_effort_env
+        else:
+            # 如果没有设置 REASONING_EFFORT，则使用传统的 thinking_mode 配置
+            thinking_mode_env = os.getenv("THINKING_MODE", thinking_mode)
+            if thinking_mode_env in ["enabled", "disabled", "auto"]:
+                self.thinking_mode = thinking_mode_env
+                self.temperature = temperature
+            else:
+                self.thinking_mode = "auto"
+                self.temperature = temperature
+                import logging
+                logging.getLogger(__name__).warning(f"无效的思考模式配置: {thinking_mode_env}，使用默认值 'auto'")
+
         if not self.api_key:
             raise ValueError("API 密钥未设置，请在 .env 文件中配置 ARK_API_KEY")
+
+    def _apply_reasoning_effort(self, effort: str):
+        """
+        应用思考强度档位配置
+
+        档位映射：
+        - no_think: thinking.type=disabled (无推理，简单问答)
+        - think-low: thinking.type=enabled + temperature=0.1 (基础推理)
+        - think-medium: thinking.type=enabled + temperature=0.5 (常规复杂问题)
+        - think-high: thinking.type=enabled + temperature=0.9 (深度推理)
+
+        Args:
+            effort: 思考强度档位
+        """
+        effort_mapping = {
+            "no_think": {"thinking_mode": "disabled", "temperature": 0.1},
+            "think-low": {"thinking_mode": "enabled", "temperature": 0.1},
+            "think-medium": {"thinking_mode": "enabled", "temperature": 0.7},
+            "think-high": {"thinking_mode": "enabled", "temperature": 0.9}
+        }
+
+        if effort not in effort_mapping:
+            raise ValueError(f"无效的思考强度档位: {effort}，可选值: {list(effort_mapping.keys())}")
+
+        config = effort_mapping[effort]
+        self.thinking_mode = config["thinking_mode"]
+        self.temperature = config["temperature"]
+
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.info(f"应用思考强度档位: {effort} -> thinking_type={self.thinking_mode}, temperature={self.temperature}")
 
     def _make_request(
         self,
@@ -88,6 +147,12 @@ class DoubaoAPIClient:
             "max_tokens": self.max_tokens,
             "temperature": self.temperature
         }
+
+        # 添加思考模式参数
+        if self.thinking_mode:
+            payload["thinking"] = {
+                "type": self.thinking_mode
+            }
 
         # 如果指定了响应格式，添加到 payload
         if response_format:
