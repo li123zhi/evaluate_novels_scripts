@@ -161,6 +161,25 @@ class ReportGenerator:
                             f.write(f"| {name} | {score} | {max_score} | {comment} |\n")
                         f.write("\n")
 
+                    # 扣分项
+                    penalties = dim_result.get('penalties', [])
+                    penalties_applied = dim_result.get('penalties_applied', [])
+                    all_penalties = penalties if penalties else penalties_applied
+
+                    if all_penalties:
+                        f.write("#### ❌ 扣分项\n\n")
+                        total_penalty = 0
+                        for penalty in all_penalties:
+                            item = penalty.get('item', penalty.get('name', '未知项'))
+                            score = penalty.get('score', 0)
+                            reason = penalty.get('reason', penalty.get('details', ''))
+                            total_penalty += abs(score) if score < 0 else 0
+                            f.write(f"- **{item}**: {score}分")
+                            if reason:
+                                f.write(f"\n  - *{reason}*")
+                            f.write("\n")
+                        f.write(f"\n**累计扣分**: {total_penalty:.0f}分\n\n")
+
                     # 优点
                     strengths = dim_result.get('strengths', [])
                     if strengths:
@@ -198,9 +217,12 @@ class ReportGenerator:
                     if "character_analysis" in dim_result:
                         f.write("#### 人物分析\n\n")
                         for char in dim_result["character_analysis"]:
-                            f.write(f"**{char.get('character', '')}** ({char.get('role', '')}) - "
-                                   f"{char.get('score', 0)}/{char.get('max_score', 10)}\n\n")
-                            f.write(f"{char.get('analysis', '')}\n\n")
+                            if isinstance(char, dict):
+                                f.write(f"**{char.get('character', '')}** ({char.get('role', '')}) - "
+                                       f"{char.get('score', 0)}/{char.get('max_score', 10)}\n\n")
+                                f.write(f"{char.get('analysis', '')}\n\n")
+                            elif isinstance(char, str):
+                                f.write(f"{char}\n\n")
 
                     if "twists_identified" in dim_result:
                         f.write("#### 反转分析\n\n")
@@ -483,6 +505,26 @@ class ReportGenerator:
                     p.add_run(f"{sub_data.get('score', 0)}/{sub_data.get('max_score', 100)}")
                     doc.add_paragraph(f"评价: {sub_data.get('comment', '')}")
 
+            # 扣分项
+            penalties = dim_result.get('penalties', [])
+            penalties_applied = dim_result.get('penalties_applied', [])
+            all_penalties = penalties if penalties else penalties_applied
+
+            if all_penalties:
+                doc.add_paragraph("扣分项:", style="List Bullet")
+                total_penalty = 0
+                for penalty in all_penalties:
+                    item = penalty.get('item', penalty.get('name', '未知项'))
+                    score = penalty.get('score', 0)
+                    reason = penalty.get('reason', penalty.get('details', ''))
+                    total_penalty += abs(score) if score < 0 else 0
+                    p = doc.add_paragraph(style="List Bullet 2")
+                    p.add_run(f"{item}: {score}分").bold = True
+                    if reason:
+                        doc.add_paragraph(f"原因: {reason}", style="List Bullet 3")
+                p = doc.add_paragraph(style="List Bullet 2")
+                p.add_run(f"累计扣分: {total_penalty:.0f}分").font.color.rgb = RGBColor(255, 0, 0)
+
             # 优点
             if "strengths" in dim_result and dim_result["strengths"]:
                 doc.add_paragraph("优点:", style="List Bullet")
@@ -598,6 +640,37 @@ class ReportGenerator:
             p.text = f"得分: {dim_result.get('total_score', 0)}/{dim_result.get('max_score', 100)}"
             p.font.size = Pt(24)
             p.font.bold = True
+
+            # 扣分项
+            penalties = dim_result.get('penalties', [])
+            penalties_applied = dim_result.get('penalties_applied', [])
+            all_penalties = penalties if penalties else penalties_applied
+
+            if all_penalties:
+                p = text_frame.add_paragraph()
+                p.text = "扣分项:"
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 0, 0)
+                p.level = 1
+                total_penalty = 0
+                for penalty in all_penalties[:5]:  # 最多显示5个扣分项
+                    item = penalty.get('item', penalty.get('name', '未知项'))
+                    score = penalty.get('score', 0)
+                    reason = penalty.get('reason', penalty.get('details', ''))
+                    total_penalty += abs(score) if score < 0 else 0
+                    p = text_frame.add_paragraph()
+                    p.text = f"• {item}: {score}分"
+                    p.level = 2
+                    if reason and len(reason) < 50:  # 只显示较短的原因
+                        p = text_frame.add_paragraph()
+                        p.text = f"  {reason}"
+                        p.level = 3
+                # 显示累计扣分
+                p = text_frame.add_paragraph()
+                p.text = f"累计扣分: {total_penalty:.0f}分"
+                p.font.bold = True
+                p.font.color.rgb = RGBColor(255, 0, 0)
+                p.level = 2
 
             # 优点
             if "strengths" in dim_result and dim_result["strengths"]:

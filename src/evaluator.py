@@ -265,7 +265,11 @@ class ScriptEvaluator:
         Returns:
             评测结果
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
         # 加载提示词模板
+        logger.debug(f"加载维度 {dimension} 的提示词模板...")
         prompt_template = self._load_prompt(dimension)
 
         # 替换剧本内容
@@ -273,25 +277,32 @@ class ScriptEvaluator:
 
         # 调用 API
         dimension_name = self.dimensions[dimension].get('name', dimension)
-        print(f"\n正在评测维度: {dimension_name}...")
-
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"开始评测维度: {dimension_name} ({dimension})")
+        logger.info("=" * 50)
+        logger.info(f"📊 开始评测维度: {dimension_name} ({dimension})")
+        logger.info("=" * 50)
+        print(f"\n📊 [{dimension}] 正在评测维度: {dimension_name}...")
 
         try:
+            logger.info("⏳ 调用豆包 API 进行评测...")
             result = self.api_client.chat_with_json_response(prompt)
             # 验证返回结果是否为字典
             if not isinstance(result, dict):
                 raise ValueError(f"API 返回结果不是字典类型，而是 {type(result).__name__}: {result}")
-            logger.info(f"维度 {dimension_name} 评测成功，得分: {result.get('total_score', 0)}")
+
+            score = result.get('total_score', 0)
+            max_score = result.get('max_score', 100)
+            logger.info(f"✅ 维度 {dimension_name} 评测成功")
+            logger.info(f"📈 得分: {score}/{max_score}")
+            print(f"✅ [{dimension}] 评测完成: {score}/{max_score} 分")
+            logger.info("=" * 50)
+
             return result
         except Exception as e:
-            print(f"评测维度 {dimension} 时出错: {str(e)}")
-            logger.error(f"评测维度 {dimension} 失败: {str(e)}")
+            logger.error(f"❌ 评测维度 {dimension} 失败: {str(e)}")
+            print(f"❌ [{dimension}] 评测失败: {str(e)}")
             import traceback
-            print(traceback.format_exc())
             logger.error(traceback.format_exc())
+            print(traceback.format_exc())
             # 返回错误结果
             return {
                 "dimension": dimension,
@@ -325,12 +336,16 @@ class ScriptEvaluator:
         if dimensions is None:
             dimensions = list(self.dimensions.keys())
 
-        logger.info(f"开始评测，共 {len(dimensions)} 个维度: {dimensions}")
+        logger.info("")
+        logger.info("🎬" * 30)
+        logger.info(f"🎬 开始评测剧本，共 {len(dimensions)} 个维度")
+        logger.info(f"📋 评测维度: {', '.join([self.dimensions.get(d, {}).get('name', d) for d in dimensions])}")
+        logger.info("🎬" * 30)
 
         # 准备剧本内容
-        logger.info("正在准备剧本内容...")
+        logger.info("📄 正在准备剧本内容...")
         script_content = self._prepare_script_content(script_path)
-        logger.info(f"剧本内容准备完成，长度: {len(script_content)} 字符")
+        logger.info(f"✅ 剧本内容准备完成，长度: {len(script_content)} 字符")
 
         # 获取剧本信息
         script_name = Path(script_path).stem
@@ -382,9 +397,17 @@ class ScriptEvaluator:
             progress_bar.close()
 
         # 计算综合评分
-        logger.info("正在计算综合评分...")
+        logger.info("")
+        logger.info("📊" * 30)
+        logger.info("📊 所有维度评测完成，正在计算综合评分...")
         result["overall"] = self._calculate_overall_score(result["dimensions"])
-        logger.info(f"评测全部完成，总分: {result['overall'].get('total_score', 0)}")
+
+        total_score = result['overall'].get('total_score', 0)
+        max_score = result['overall'].get('max_score', 100)
+        logger.info(f"🎉 评测全部完成！")
+        logger.info(f"🏆 综合评分: {total_score}/{max_score}")
+        logger.info("📊" * 30)
+        print(f"\n🎉 评测完成！综合评分: {total_score}/{max_score}\n")
 
         return result
 

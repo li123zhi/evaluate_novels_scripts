@@ -485,6 +485,33 @@
         .report-view strong {
             font-weight: 600;
         }
+        /* 表单样式 */
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+        .form-control {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid var(--gray-200);
+            border-radius: 6px;
+            font-size: 1rem;
+            font-family: inherit;
+        }
+        .form-control:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(66, 133, 244, 0.1);
+        }
+        select.form-control {
+            cursor: pointer;
+            background: white;
+        }
     </style>
 </head>
 <body>
@@ -498,6 +525,9 @@
                         <p>基于豆包 seed-1.8 模型的短剧剧本质量评测</p>
                     </div>
                     <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-secondary" @click="showNovelPage" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
+                            📖 小说创作
+                        </button>
                         <button class="btn btn-secondary" @click="showHistoryPage" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);">
                             📜 历史记录
                         </button>
@@ -559,6 +589,193 @@
                         <div class="progress-fill" :style="{ width: progress + '%' }"></div>
                     </div>
                     <p style="color: var(--gray-600); margin-top: 10px;">{{ progressText }}</p>
+                </div>
+            </div>
+
+            <!-- 小说创作页面 -->
+            <div class="card" v-if="stage === 'novel'">
+                <!-- 页面标题和返回按钮 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px;">
+                    <div style="display: flex; align-items: center; gap: 15px;">
+                        <button v-if="previousStage" @click="back" class="btn btn-secondary">← 返回</button>
+                        <h2 style="margin: 0;">📖 小说创作工具</h2>
+                    </div>
+                </div>
+
+                <!-- 功能选择标签 -->
+                <div style="display: flex; gap: 10px; margin-bottom: 30px; border-bottom: 2px solid #e5e7eb; padding-bottom: 10px;">
+                    <button @click="novelTab = 'generate'"
+                            :class="['btn', novelTab === 'generate' ? 'btn-primary' : 'btn-secondary']"
+                            style="flex: 1;">
+                        ✨ AI生成小说
+                    </button>
+                    <button @click="novelTab = 'evaluate'"
+                            :class="['btn', novelTab === 'evaluate' ? 'btn-primary' : 'btn-secondary']"
+                            style="flex: 1;">
+                        📊 评测小说
+                    </button>
+                    <button @click="novelTab = 'scriptToNovel'"
+                            :class="['btn', novelTab === 'scriptToNovel' ? 'btn-primary' : 'btn-secondary']"
+                            style="flex: 1;">
+                        🎬 剧本改小说
+                    </button>
+                    <button @click="novelTab = 'improve'"
+                            :class="['btn', novelTab === 'improve' ? 'btn-primary' : 'btn-secondary']"
+                            style="flex: 1;">
+                        🔧 AI改进小说
+                    </button>
+                </div>
+
+                <!-- AI生成小说 -->
+                <div v-if="novelTab === 'generate'">
+                    <h3 style="margin: 0 0 20px 0;">✨ AI生成小说</h3>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>题材</label>
+                        <select v-model="novelParams.genre" class="form-control">
+                            <option value="都市">都市</option>
+                            <option value="言情">言情</option>
+                            <option value="玄幻">玄幻</option>
+                            <option value="仙侠">仙侠</option>
+                            <option value="武侠">武侠</option>
+                            <option value="历史">历史</option>
+                            <option value="科幻">科幻</option>
+                            <option value="游戏">游戏</option>
+                            <option value="悬疑">悬疑</option>
+                            <option value="灵异">灵异</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>风格</label>
+                        <select v-model="novelParams.style" class="form-control">
+                            <option value="轻松">轻松</option>
+                            <option value="沉重">沉重</option>
+                            <option value="幽默">幽默</option>
+                            <option value="文艺">文艺</option>
+                            <option value="热血">热血</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>字数</label>
+                        <input type="number" v-model.number="novelParams.length" class="form-control" placeholder="50000">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>章节数</label>
+                        <input type="number" v-model.number="novelParams.chapters" class="form-control" placeholder="20">
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>大纲（可选）</label>
+                        <textarea v-model="novelParams.outline" class="form-control" rows="5" placeholder="输入小说大纲..."></textarea>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>世界观设定（可选）</label>
+                        <textarea v-model="novelParams.world_setting" class="form-control" rows="3" placeholder="输入世界观设定..."></textarea>
+                    </div>
+
+                    <button class="btn btn-primary" @click="generateNovel" :disabled="novelGenerating">
+                        🚀 {{ novelGenerating ? '生成中...' : '开始生成' }}
+                    </button>
+                </div>
+
+                <!-- 评测小说 -->
+                <div v-if="novelTab === 'evaluate'">
+                    <h3 style="margin: 0 0 20px 0;">📊 评测小说</h3>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>小说内容</label>
+                        <textarea v-model="novelContent" class="form-control" rows="15" placeholder="粘贴小说内容进行评测..."></textarea>
+                    </div>
+
+                    <button class="btn btn-primary" @click="evaluateNovel" :disabled="novelEvaluating || !novelContent">
+                        📊 {{ novelEvaluating ? '评测中...' : '开始评测' }}
+                    </button>
+
+                    <!-- 评测结果 -->
+                    <div v-if="novelEvaluationResult" style="margin-top: 30px; padding: 20px; background: #f9fafb; border-radius: 8px;">
+                        <h4 style="margin: 0 0 15px 0;">📊 评测结果</h4>
+                        <div style="font-size: 1.5rem; font-weight: bold; color: var(--primary);">
+                            总分: {{ novelEvaluationResult.total_score }} / {{ novelEvaluationResult.max_score }}
+                        </div>
+                        <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px;">
+                            <strong>评级:</strong> {{ novelEvaluationResult.publication_probability?.level }}
+                        </div>
+                        <div v-if="novelEvaluationResult.reality_check" style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 4px;">
+                            <strong>市场预测:</strong> {{ novelEvaluationResult.reality_check.market_forecast }}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 剧本改小说 -->
+                <div v-if="novelTab === 'scriptToNovel'">
+                    <h3 style="margin: 0 0 20px 0;">🎬 剧本改写成小说</h3>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>剧本内容</label>
+                        <textarea v-model="scriptContent" class="form-control" rows="10" placeholder="粘贴剧本内容..."></textarea>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>改写风格</label>
+                        <select v-model="scriptToNovelParams.style" class="form-control">
+                            <option value="详实">详实</option>
+                            <option value="简洁">简洁</option>
+                            <option value="文艺">文艺</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>
+                            <input type="checkbox" v-model="scriptToNovelParams.expand_psychology">
+                            扩充心理描写
+                        </label>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>
+                            <input type="checkbox" v-model="scriptToNovelParams.expand_environment">
+                            扩充环境描写
+                        </label>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>
+                            <input type="checkbox" v-model="scriptToNovelParams.first_person">
+                            使用第一人称
+                        </label>
+                    </div>
+
+                    <button class="btn btn-primary" @click="scriptToNovel" :disabled="scriptConverting || !scriptContent">
+                        🎬 {{ scriptConverting ? '改写中...' : '开始改写' }}
+                    </button>
+                </div>
+
+                <!-- AI改进小说 -->
+                <div v-if="novelTab === 'improve'">
+                    <h3 style="margin: 0 0 20px 0;">🔧 AI改进小说</h3>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>小说内容</label>
+                        <textarea v-model="improveNovelContent" class="form-control" rows="10" placeholder="粘贴需要改进的小说内容..."></textarea>
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 20px;">
+                        <label>改进重点</label>
+                        <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 10px;">
+                            <label v-for="area in ['文笔', '人物塑造', '情节设计', '世界观构建', '创新度']" :key="area">
+                                <input type="checkbox" :value="area" v-model="improveFocusAreas">
+                                {{ area }}
+                            </label>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" @click="improveNovel" :disabled="novelImproving || !improveNovelContent || improveFocusAreas.length === 0">
+                        🔧 {{ novelImproving ? '改进中...' : '开始改进' }}
+                    </button>
                 </div>
             </div>
 
@@ -781,6 +998,26 @@
                                 </tr>
                             </tbody>
                         </table>
+                    </div>
+
+                    <!-- 扣分项 -->
+                    <div v-if="(dim.penalties && dim.penalties.length) || (dim.penalties_applied && dim.penalties_applied.length)" style="margin-top: 25px;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.2rem;">#### ❌ 扣分项</h4>
+                        <div style="background: #ffebee; padding: 20px; border-radius: 8px; border-left: 4px solid #c62828;">
+                            <template v-for="(penalty, i) in (dim.penalties || dim.penalties_applied || [])">
+                                <div :key="'penalty'+i" style="margin-bottom: 15px;">
+                                    <div style="font-weight: 600; color: #c62828; margin-bottom: 5px;">
+                                        {{ penalty.item || penalty.name }}: <span style="color: #d32f2f;">{{ penalty.score }}分</span>
+                                    </div>
+                                    <div v-if="penalty.reason || penalty.details" style="color: var(--gray-700); font-size: 0.95rem; line-height: 1.6; padding-left: 10px;">
+                                        原因: {{ penalty.reason || penalty.details }}
+                                    </div>
+                                </div>
+                            </template>
+                            <div style="margin-top: 15px; padding-top: 15px; border-top: 2px solid #ef5350; font-weight: 700; color: #c62828;">
+                                累计扣分: {{ (dim.penalties || dim.penalties_applied || []).reduce((sum, p) => sum + (p.score < 0 ? Math.abs(p.score) : 0), 0) }}分
+                            </div>
+                        </div>
                     </div>
 
                     <!-- 优点 -->
@@ -1109,7 +1346,32 @@
                     viewingHistory: false,
                     // 导航历史栈
                     navigationHistory: [],
-                    previousStage: null
+                    previousStage: null,
+                    // 小说创作相关
+                    novelTab: 'generate',
+                    novelParams: {
+                        genre: '都市',
+                        style: '轻松',
+                        length: 50000,
+                        chapters: 20,
+                        outline: '',
+                        world_setting: ''
+                    },
+                    novelGenerating: false,
+                    novelContent: '',
+                    novelEvaluating: false,
+                    novelEvaluationResult: null,
+                    scriptContent: '',
+                    scriptToNovelParams: {
+                        style: '详实',
+                        expand_psychology: true,
+                        expand_environment: true,
+                        first_person: false
+                    },
+                    scriptConverting: false,
+                    improveNovelContent: '',
+                    improveFocusAreas: [],
+                    novelImproving: false
                 }
             },
             computed: {
@@ -1471,11 +1733,19 @@
                         })
 
                         if (response.data.success) {
+                            // 过滤掉小说相关的记录，只保留剧本评测记录
+                            const novelTypes = ['novel_generation', 'novel_evaluation', 'script_to_novel', 'novel_improvement']
+                            const scriptRecords = response.data.records.filter(record => {
+                                // 如果没有 type 字段，或者是剧本评测相关的类型，则显示
+                                const recordType = record.type || 'script_evaluation'
+                                return !novelTypes.includes(recordType)
+                            })
+
                             // 按时间倒序排序（最近的在前面）
-                            this.historyRecords = response.data.records.sort((a, b) => {
+                            this.historyRecords = scriptRecords.sort((a, b) => {
                                 return new Date(b.timestamp) - new Date(a.timestamp)
                             })
-                            this.hasMoreHistory = response.data.records.length >= response.data.limit
+                            this.hasMoreHistory = scriptRecords.length >= response.data.limit
                         }
                     } catch (error) {
                         console.error('加载历史记录失败:', error)
@@ -1493,12 +1763,19 @@
                         })
 
                         if (response.data.success) {
+                            // 过滤掉小说相关的记录，只保留剧本评测记录
+                            const novelTypes = ['novel_generation', 'novel_evaluation', 'script_to_novel', 'novel_improvement']
+                            const scriptRecords = response.data.records.filter(record => {
+                                const recordType = record.type || 'script_evaluation'
+                                return !novelTypes.includes(recordType)
+                            })
+
                             // 添加新记录并重新排序
-                            this.historyRecords.push(...response.data.records)
+                            this.historyRecords.push(...scriptRecords)
                             this.historyRecords.sort((a, b) => {
                                 return new Date(b.timestamp) - new Date(a.timestamp)
                             })
-                            this.hasMoreHistory = response.data.records.length >= response.data.limit
+                            this.hasMoreHistory = scriptRecords.length >= response.data.limit
                         }
                     } catch (error) {
                         console.error('加载更多历史记录失败:', error)
@@ -1629,6 +1906,95 @@
                         this.showError('导入失败：' + (error.response?.data?.error || error.message))
                     } finally {
                         this.importing = false
+                    }
+                },
+                // 小说创作页面
+                showNovelPage() {
+                    // 保存当前stage到历史栈
+                    this.navigationHistory.push(this.stage)
+                    this.previousStage = this.stage
+                    this.stage = 'novel'
+                },
+                // AI生成小说
+                async generateNovel() {
+                    this.novelGenerating = true
+                    try {
+                        const res = await axios.post('/api/novel/generate', this.novelParams)
+                        if (res.data.success) {
+                            alert('小说生成成功！')
+                            console.log('生成结果:', res.data.data)
+                            // 可以在这里跳转到结果页面或显示结果
+                        } else {
+                            this.showError('生成失败：' + (res.data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        console.error('生成小说失败:', error)
+                        this.showError('生成失败：' + (error.response?.data?.error || error.message))
+                    } finally {
+                        this.novelGenerating = false
+                    }
+                },
+                // 评测小说
+                async evaluateNovel() {
+                    this.novelEvaluating = true
+                    try {
+                        const res = await axios.post('/api/novel/evaluate', {
+                            content: this.novelContent
+                        })
+                        if (res.data.success) {
+                            this.novelEvaluationResult = res.data.data
+                            alert('评测完成！')
+                        } else {
+                            this.showError('评测失败：' + (res.data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        console.error('评测小说失败:', error)
+                        this.showError('评测失败：' + (error.response?.data?.error || error.message))
+                    } finally {
+                        this.novelEvaluating = false
+                    }
+                },
+                // 剧本改小说
+                async scriptToNovel() {
+                    this.scriptConverting = true
+                    try {
+                        const res = await axios.post('/api/novel/script-to-novel', {
+                            content: this.scriptContent,
+                            ...this.scriptToNovelParams
+                        })
+                        if (res.data.success) {
+                            alert('改写成功！')
+                            console.log('改写结果:', res.data.data)
+                        } else {
+                            this.showError('改写失败：' + (res.data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        console.error('剧本改小说失败:', error)
+                        this.showError('改写失败：' + (error.response?.data?.error || error.message))
+                    } finally {
+                        this.scriptConverting = false
+                    }
+                },
+                // AI改进小说
+                async improveNovel() {
+                    this.novelImproving = true
+                    try {
+                        const res = await axios.post('/api/novel/improve', {
+                            content: this.improveNovelContent,
+                            evaluation: this.novelEvaluationResult || {},
+                            focus_areas: this.improveFocusAreas
+                        })
+                        if (res.data.success) {
+                            alert('改进成功！')
+                            console.log('改进结果:', res.data.data)
+                        } else {
+                            this.showError('改进失败：' + (res.data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        console.error('AI改进小说失败:', error)
+                        this.showError('改进失败：' + (error.response?.data?.error || error.message))
+                    } finally {
+                        this.novelImproving = false
                     }
                 }
             },

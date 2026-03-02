@@ -54,6 +54,7 @@ class HistoryManager:
             # 创建摘要记录
             record = {
                 'id': record_id,
+                'type': evaluation_result.get('type', 'script_evaluation'),  # 添加类型字段
                 'timestamp': datetime.now().isoformat(),
                 'script_name': evaluation_result.get('script_name', ''),
                 'overall_score': evaluation_result.get('overall', {}).get('total_score', 0),

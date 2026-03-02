@@ -13,9 +13,28 @@ import logging
 from flask import Flask, render_template, request, jsonify
 from werkzeug.utils import secure_filename
 
-# 配置日志
-logging.basicConfig(level=logging.DEBUG)
+# 配置日志 - 确保输出到控制台和文件
+import sys
+
+# 创建日志格式
+log_format = '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+date_format = '%Y-%m-%d %H:%M:%S'
+
+# 配置根日志记录器
+logging.basicConfig(
+    level=logging.DEBUG,
+    format=log_format,
+    datefmt=date_format,
+    handlers=[
+        logging.StreamHandler(sys.stdout),  # 输出到控制台
+        logging.FileHandler('/tmp/app.log', encoding='utf-8')  # 输出到文件
+    ]
+)
+
 logger = logging.getLogger(__name__)
+logger.info("=" * 60)
+logger.info("🚀 AI 剧本评测系统启动")
+logger.info("=" * 60)
 
 # 添加 src 目录到路径
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
@@ -23,6 +42,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from src.evaluator import ScriptEvaluator
 from src.report_generator import ReportGenerator
 from src.history_manager import HistoryManager
+from src.novel_generator import NovelGenerator
+from src.api_client import DoubaoAPIClient
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 最大 50MB
@@ -301,10 +322,22 @@ def evaluate():
                 raise RuntimeError(f"PDF 文件解析失败: {str(e)}")
 
         # 执行评测
-        logger.info(f"开始评测剧本: {original_filename}, 维度: {dimension_list}")
+        logger.info("=" * 60)
+        logger.info(f"📝 开始评测剧本: {original_filename}")
+        logger.info(f"📊 评测维度: {dimension_list}")
+        logger.info(f"📄 剧本路径: {actual_script_path}")
+        logger.info("=" * 60)
+
         evaluator = ScriptEvaluator()
-        result = evaluator.evaluate(actual_script_path, dimensions=dimension_list, show_progress=False)
-        logger.info(f"评测完成，准备生成报告")
+
+        # 开始评测（显示进度）
+        logger.info("⏳ 正在初始化评测...")
+        result = evaluator.evaluate(actual_script_path, dimensions=dimension_list, show_progress=True)
+
+        logger.info("=" * 60)
+        logger.info("✅ 评测完成，准备生成报告")
+        logger.info(f"📈 总分: {result.get('overall', {}).get('total_score', 'N/A')}")
+        logger.info("=" * 60)
 
         # 生成报告
         logger.info("开始生成报告...")
@@ -337,6 +370,8 @@ def evaluate():
 
         # 保存历史记录
         try:
+            # 标记为剧本评测类型，用于区分小说相关记录
+            result['type'] = 'script_evaluation'
             record_id = history_manager.add_record(result)
             result['record_id'] = record_id
             logger.info(f"历史记录已保存: {record_id}")
@@ -372,7 +407,6 @@ def evaluate():
             return json_response
         except Exception as e:
             logger.error(f"JSONify 失败: {e}")
-            import traceback
             logger.error(traceback.format_exc())
             # 返回简化版本
             simple_response = {
@@ -861,6 +895,226 @@ def import_history():
 
     except Exception as e:
         logger.error(f"导入历史记录失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+# ==================== 小说生成器 API ====================
+
+@app.route('/api/novel/generate', methods=['POST'])
+def generate_novel():
+    """AI生成小说"""
+    try:
+        data = request.get_json()
+
+        # 获取生成参数
+        params = {
+            'genre': data.get('genre', '都市'),
+            'style': data.get('style', '轻松'),
+            'length': data.get('length', 50000),
+            'chapters': data.get('chapters', 20),
+            'outline': data.get('outline', ''),
+            'characters': data.get('characters', []),
+            'world_setting': data.get('world_setting', ''),
+            'target_audience': data.get('target_audience', '年轻读者'),
+            'tone': data.get('tone', '轻松愉快'),
+            'theme': data.get('theme', '成长与爱情'),
+        }
+
+        # 创建小说生成器
+        api_client = DoubaoAPIClient()
+        generator = NovelGenerator(api_client)
+
+        # 生成小说
+        logger.info(f"开始AI生成小说，题材：{params['genre']}")
+        result = generator.generate_novel(params)
+
+        if result.get('success'):
+            # 保存到历史记录
+            history_record = {
+                'id': str(uuid.uuid4()),
+                'type': 'novel_generation',
+                'genre': params['genre'],
+                'style': params['style'],
+                'result': result,
+                'timestamp': history_manager._get_timestamp()
+            }
+            history_manager.add_record(history_record)
+
+            return jsonify({
+                'success': True,
+                'data': result,
+                'record_id': history_record['id']
+            })
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        logger.error(f"AI生成小说失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/evaluate', methods=['POST'])
+def evaluate_novel():
+    """评测小说质量"""
+    try:
+        data = request.get_json()
+
+        # 获取小说内容
+        novel_content = data.get('content', '')
+        if not novel_content:
+            return jsonify({
+                'success': False,
+                'error': '请提供小说内容'
+            }), 400
+
+        # 创建小说生成器
+        api_client = DoubaoAPIClient()
+        generator = NovelGenerator(api_client)
+
+        # 评测小说
+        logger.info("开始评测小说")
+        result = generator.evaluate_novel(novel_content)
+
+        if result.get('success'):
+            # 保存到历史记录
+            history_record = {
+                'id': str(uuid.uuid4()),
+                'type': 'novel_evaluation',
+                'content_length': len(novel_content),
+                'result': result,
+                'timestamp': history_manager._get_timestamp()
+            }
+            history_manager.add_record(history_record)
+
+            return jsonify({
+                'success': True,
+                'data': result['evaluation'],
+                'record_id': history_record['id']
+            })
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        logger.error(f"评测小说失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/script-to-novel', methods=['POST'])
+def script_to_novel():
+    """剧本改写成小说"""
+    try:
+        data = request.get_json()
+
+        # 获取剧本内容
+        script_content = data.get('content', '')
+        if not script_content:
+            return jsonify({
+                'success': False,
+                'error': '请提供剧本内容'
+            }), 400
+
+        # 获取改写参数
+        params = {
+            'style': data.get('style', '详实'),
+            'expand_psychology': data.get('expand_psychology', True),
+            'expand_environment': data.get('expand_environment', True),
+            'first_person': data.get('first_person', False),
+        }
+
+        # 创建小说生成器
+        api_client = DoubaoAPIClient()
+        generator = NovelGenerator(api_client)
+
+        # 改写成小说
+        logger.info("开始剧本改小说")
+        result = generator.script_to_novel(script_content, params)
+
+        if result.get('success'):
+            # 保存到历史记录
+            history_record = {
+                'id': str(uuid.uuid4()),
+                'type': 'script_to_novel',
+                'style': params['style'],
+                'result': result,
+                'timestamp': history_manager._get_timestamp()
+            }
+            history_manager.add_record(history_record)
+
+            return jsonify({
+                'success': True,
+                'data': result,
+                'record_id': history_record['id']
+            })
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        logger.error(f"剧本改小说失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/improve', methods=['POST'])
+def improve_novel():
+    """AI改进小说"""
+    try:
+        data = request.get_json()
+
+        # 获取参数
+        novel_content = data.get('content', '')
+        evaluation_result = data.get('evaluation', {})
+        improvement_focus = data.get('focus_areas', ['文笔', '人物塑造', '情节设计'])
+
+        if not novel_content:
+            return jsonify({
+                'success': False,
+                'error': '请提供小说内容'
+            }), 400
+
+        # 创建小说生成器
+        api_client = DoubaoAPIClient()
+        generator = NovelGenerator(api_client)
+
+        # 改进小说
+        logger.info(f"开始AI改进小说，重点：{improvement_focus}")
+        result = generator.improve_novel(novel_content, evaluation_result, improvement_focus)
+
+        if result.get('success'):
+            # 保存到历史记录
+            history_record = {
+                'id': str(uuid.uuid4()),
+                'type': 'novel_improvement',
+                'focus_areas': improvement_focus,
+                'result': result,
+                'timestamp': history_manager._get_timestamp()
+            }
+            history_manager.add_record(history_record)
+
+            return jsonify({
+                'success': True,
+                'data': result,
+                'record_id': history_record['id']
+            })
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        logger.error(f"AI改进小说失败: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({
             'success': False,

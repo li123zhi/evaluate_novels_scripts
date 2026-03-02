@@ -26,7 +26,8 @@ class DoubaoAPIClient:
         temperature: float = 0.7,
         timeout: int = 300,  # 5分钟超时
         max_retries: int = 3,
-        thinking_mode: Optional[str] = None  # 思考模式: enabled/disabled/auto
+        thinking_mode: Optional[str] = None,  # 思考模式: enabled/disabled/auto
+        reasoning_effort: Optional[str] = None  # 思考深度: minimal/low/medium/high
     ):
         """
         初始化 API 客户端
@@ -40,6 +41,7 @@ class DoubaoAPIClient:
             timeout: 请求超时时间（秒）
             max_retries: 最大重试次数
             thinking_mode: 思考模式 (enabled/disabled/auto)
+            reasoning_effort: 思考深度 (minimal/low/medium/high)
         """
         self.api_key = api_key or os.getenv("ARK_API_KEY")
         base_url = api_url or os.getenv("ARK_BASE_URL", "https://ark.cn-beijing.volces.com/api/v3")
@@ -60,6 +62,13 @@ class DoubaoAPIClient:
             self.thinking_mode = thinking_mode_env
         else:
             self.thinking_mode = thinking_mode or "disabled"  # 默认关闭思考模式
+
+        # 读取思考深度配置
+        reasoning_effort_env = os.getenv("REASONING_EFFORT")
+        if reasoning_effort_env and reasoning_effort_env in ["minimal", "low", "medium", "high"]:
+            self.reasoning_effort = reasoning_effort_env
+        else:
+            self.reasoning_effort = reasoning_effort or None  # 默认不设置
 
         if not self.api_key:
             raise ValueError("API 密钥未设置，请在 .env 文件中配置 ARK_API_KEY")
@@ -100,9 +109,13 @@ class DoubaoAPIClient:
 
         # 添加思考模式参数
         if self.thinking_mode and self.thinking_mode != "disabled":
-            payload["thinking"] = {
-                "type": self.thinking_mode
-            }
+            thinking_config = {"type": self.thinking_mode}
+
+            # 如果设置了 reasoning_effort，添加到 thinking 配置中
+            if self.reasoning_effort:
+                thinking_config["reasoning_effort"] = self.reasoning_effort
+
+            payload["thinking"] = thinking_config
 
         # 如果指定了响应格式，添加到 payload
         if response_format:
@@ -157,6 +170,12 @@ class DoubaoAPIClient:
         Returns:
             模型响应文本
         """
+        import logging
+        logger = logging.getLogger(__name__)
+
+        logger.info(f"📤 准备发送 API 请求 (JSON模式: {json_mode})")
+        logger.info(f"📝 Prompt 长度: {len(prompt)} 字符")
+
         messages = []
 
         if system_prompt:
@@ -166,11 +185,16 @@ class DoubaoAPIClient:
 
         response_format = {"type": "json_object"} if json_mode else None
 
+        logger.info("⏳ 等待豆包 API 响应...")
         response_data = self._make_request(messages, response_format)
+        logger.info("✅ 收到 API 响应")
 
         try:
-            return response_data["choices"][0]["message"]["content"]
+            content = response_data["choices"][0]["message"]["content"]
+            logger.info(f"📥 响应内容长度: {len(content)} 字符")
+            return content
         except (KeyError, IndexError) as e:
+            logger.error(f"❌ 解析 API 响应失败: {str(e)}")
             raise RuntimeError(f"解析 API 响应失败: {str(e)}")
 
     def chat_with_json_response(

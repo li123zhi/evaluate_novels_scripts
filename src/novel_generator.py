@@ -256,3 +256,50 @@ class NovelGenerator:
                     })
 
         return issues
+
+    def evaluate_novel(self, novel_content: str, params: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        """
+        评测小说质量
+
+        Args:
+            novel_content: 小说内容
+            params: 评测参数（可选）
+
+        Returns:
+            评测结果
+        """
+        logger.info("开始评测小说")
+
+        try:
+            # 读取prompt模板
+            prompt_file = self.prompts_dir / "novel_evaluation.txt"
+            if not prompt_file.exists():
+                prompt_file = self.prompts_dir / "novel_evaluation.md"
+
+            prompt_template = prompt_file.read_text(encoding='utf-8')
+
+            # 构建prompt
+            prompt = prompt_template.replace('{novel_content}', novel_content[:10000])  # 限制长度避免token过多
+
+            # 调用AI评测
+            response = self.ai_client.chat(
+                prompt=prompt,
+                system_prompt="你是一位专业的网络小说编辑和评论家，擅长评估小说质量。",
+                response_format="json"
+            )
+
+            # 解析响应
+            result = json.loads(response) if isinstance(response, str) else response
+
+            logger.info(f"小说评测完成，总分: {result.get('total_score', 0)}")
+            return {
+                'success': True,
+                'evaluation': result
+            }
+
+        except Exception as e:
+            logger.error(f"小说评测失败: {str(e)}")
+            return {
+                'success': False,
+                'error': str(e)
+            }

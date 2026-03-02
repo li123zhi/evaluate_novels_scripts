@@ -8,6 +8,28 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
+# 解析命令行参数
+DAEMON_MODE=false
+for arg in "$@"; do
+  case $arg in
+    -d|--daemon|--background)
+      DAEMON_MODE=true
+      shift
+      ;;
+    -h|--help)
+      echo "用法: $0 [选项]"
+      echo ""
+      echo "选项:"
+      echo "  -d, --daemon, --background    后台模式运行（默认前台模式）"
+      echo "  -h, --help                   显示此帮助信息"
+      echo ""
+      echo "前台模式: 日志实时显示在当前终端，Ctrl+C 停止服务"
+      echo "后台模式: 服务在后台运行，使用 ./logs.sh 查看日志"
+      exit 0
+      ;;
+  esac
+done
+
 echo "================================"
 echo "  AI 剧本评测系统 - Web 服务"
 echo "================================"
@@ -128,79 +150,102 @@ else
 fi
 echo
 
-echo "================================"
-echo "  启动 Web 服务"
-echo "================================"
-echo
+if [ "$DAEMON_MODE" = true ]; then
+  # ==================== 后台模式 ====================
+  echo "📋 模式: 后台运行"
+  echo ""
 
-# 启动 Flask 应用（会自动查找可用端口）
-echo "⏳ 启动服务器..."
-nohup python3 app.py > /tmp/app_startup.log 2>&1 &
-SERVER_PID=$!
+  # 启动 Flask 应用（会自动查找可用端口）
+  echo "⏳ 启动服务器..."
+  nohup python3 app.py > /tmp/app_startup.log 2>&1 &
+  SERVER_PID=$!
 
-echo "📝 服务器 PID: $SERVER_PID"
-echo "📋 启动日志: /tmp/app_startup.log"
+  echo "📝 服务器 PID: $SERVER_PID"
+  echo "📋 启动日志: /tmp/app_startup.log"
 
-# 等待服务器启动
-echo "⌛ 等待服务器启动..."
-sleep 5
+  # 等待服务器启动
+  echo "⌛ 等待服务器启动..."
+  sleep 5
 
-# 检查进程是否还在运行
-if ! ps -p $SERVER_PID >/dev/null 2>&1; then
-  echo "❌ 服务器启动失败！请查看日志: /tmp/app_startup.log"
-  cat /tmp/app_startup.log
-  exit 1
-fi
-
-# 直接通过 PID 查找服务器实际监听的端口（最准确的方法）
-echo "🔍 检测服务端口..."
-ACTUAL_PORT=""
-if ps -p $SERVER_PID >/dev/null 2>&1; then
-  # 从 lsof 查找该进程监听的所有端口（IPv4 + TCP + LISTEN）
-  # 使用 tail -n +2 跳过表头，防止提取到 "NAME" 字段名
-  ACTUAL_PORT=$(lsof -Pan -p $SERVER_PID -i 2>/dev/null | tail -n +2 | grep -i listen | awk '{print $9}' | cut -d':' -f2 | head -1)
-
-  if [ -n "$ACTUAL_PORT" ] && [[ "$ACTUAL_PORT" =~ ^[0-9]+$ ]]; then
-    echo "✅ 找到服务运行在端口: $ACTUAL_PORT (PID: $SERVER_PID)"
-  else
-    echo "⚠️  无法通过 lsof 检测端口，尝试读取启动日志..."
-    # 备选方法：从 app.py 的输出中读取端口
-    ACTUAL_PORT=$(grep -oP '访问地址: http://localhost:\K\d+' /tmp/app_startup.log 2>/dev/null | head -1)
-    if [ -n "$ACTUAL_PORT" ]; then
-      echo "✅ 从日志找到服务运行在端口: $ACTUAL_PORT"
-    fi
+  # 检查进程是否还在运行
+  if ! ps -p $SERVER_PID >/dev/null 2>&1; then
+    echo "❌ 服务器启动失败！请查看日志: /tmp/app_startup.log"
+    cat /tmp/app_startup.log
+    exit 1
   fi
+
+  # 直接通过 PID 查找服务器实际监听的端口（最准确的方法）
+  echo "🔍 检测服务端口..."
+  ACTUAL_PORT=""
+  if ps -p $SERVER_PID >/dev/null 2>&1; then
+    # 从 lsof 查找该进程监听的所有端口（IPv4 + TCP + LISTEN）
+    # 使用 tail -n +2 跳过表头，防止提取到 "NAME" 字段名
+    ACTUAL_PORT=$(lsof -Pan -p $SERVER_PID -i 2>/dev/null | tail -n +2 | grep -i listen | awk '{print $9}' | cut -d':' -f2 | head -1)
+
+    if [ -n "$ACTUAL_PORT" ] && [[ "$ACTUAL_PORT" =~ ^[0-9]+$ ]]; then
+      echo "✅ 找到服务运行在端口: $ACTUAL_PORT (PID: $SERVER_PID)"
+    else
+      echo "⚠️  无法通过 lsof 检测端口，尝试读取启动日志..."
+      # 备选方法：从 app.py 的输出中读取端口
+      ACTUAL_PORT=$(grep -oP '访问地址: http://localhost:\K\d+' /tmp/app_startup.log 2>/dev/null | head -1)
+      if [ -n "$ACTUAL_PORT" ]; then
+        echo "✅ 从日志找到服务运行在端口: $ACTUAL_PORT"
+      fi
+    fi
+  else
+    echo "❌ 无法检测到运行中的服务器进程"
+  fi
+
+  # 显示访问地址
+  if [ -n "$ACTUAL_PORT" ]; then
+    echo ""
+    echo "=========================================="
+    echo "  🎉 服务启动成功！"
+    echo "=========================================="
+    echo ""
+    echo "📍 访问地址："
+    echo ""
+    echo "  🖥️  前端界面（Web）："
+    echo "     本地访问: http://localhost:$ACTUAL_PORT"
+    echo "     局域网: http://$(ipconfig getifaddr en0 2>/dev/null || echo '192.168.1.133'):$ACTUAL_PORT"
+    echo ""
+    echo "  🔌 后端API："
+    echo "     API根路径: http://localhost:$ACTUAL_PORT/api"
+    echo "     评测接口: http://localhost:$ACTUAL_PORT/api/evaluate"
+    echo "     历史记录: http://localhost:$ACTUAL_PORT/api/history"
+    echo ""
+    echo "=========================================="
+    echo ""
+    echo "✅ 服务已在后台运行 (PID: $SERVER_PID)"
+    echo ""
+    echo "📺 查看日志命令："
+    echo "   ./logs.sh              实时查看所有日志"
+    echo "   ./logs.sh filter       实时查看关键日志（推荐）"
+    echo "   ./logs.sh recent 100   查看最近100行"
+    echo "   ./logs.sh errors       查看错误日志"
+    echo ""
+    echo "🛑 停止服务: kill $SERVER_PID"
+    echo "            或: pkill -f 'python.*app.py'"
+    echo ""
+  fi
+
+  # 脚本结束，服务在后台运行
+  echo "🚀 启动完成！"
+  echo ""
+  echo "💡 提示: 使用 './logs.sh filter' 实时查看评测日志"
+  echo ""
+
 else
-  echo "❌ 无法检测到运行中的服务器进程"
-fi
+  # ==================== 前台模式（默认）====================
+  echo "📋 模式: 前台运行（日志实时显示）"
+  echo ""
+  echo "💡 提示: 按 Ctrl+C 停止服务"
+  echo ""
+  echo "=========================================="
+  echo "  🚀 启动服务中..."
+  echo "=========================================="
+  echo ""
 
-# 显示访问地址
-if [ -n "$ACTUAL_PORT" ]; then
-  echo ""
-  echo "=========================================="
-  echo "  🎉 服务启动成功！"
-  echo "=========================================="
-  echo ""
-  echo "📍 访问地址："
-  echo ""
-  echo "  🖥️  前端界面（Web）："
-  echo "     本地访问: http://localhost:$ACTUAL_PORT"
-  echo "     局域网: http://$(ipconfig getifaddr en0 2>/dev/null || echo '192.168.1.133'):$ACTUAL_PORT"
-  echo ""
-  echo "  🔌 后端API："
-  echo "     API根路径: http://localhost:$ACTUAL_PORT/api"
-  echo "     评测接口: http://localhost:$ACTUAL_PORT/api/evaluate"
-  echo "     历史记录: http://localhost:$ACTUAL_PORT/api/history"
-  echo ""
-  echo "=========================================="
-  echo ""
-  echo "✅ 服务已在后台运行 (PID: $SERVER_PID)"
-  echo ""
-  echo "📋 查看日志: tail -f /tmp/app_startup.log"
-  echo "🛑 停止服务: kill $SERVER_PID"
-  echo "            或: pkill -f 'python.*app.py'"
-  echo ""
+  # 直接运行，日志输出到当前终端
+  exec python3 app.py
 fi
-
-# 脚本结束，服务在后台运行
-echo "🚀 启动完成！"
