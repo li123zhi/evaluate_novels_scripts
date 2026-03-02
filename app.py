@@ -155,7 +155,7 @@ def clean_script_text(text: str) -> str:
 
     # 6. 移除不可见字符（保留换行、制表符、常用标点）
     # 保留中文、英文、数字、常用标点、换行符
-    text = re.sub(r'[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9\s\.,!?;:：，。！？；、\(\)\[\]""''《》·—·…～–—/=@#\\%\^&\*\+\|\{\}\<\>\n\r\t]', '', text)
+    text = re.sub(r'[^\u4e00-\u9fff\u3400-\u4dbfa-zA-Z0-9\s\.,!?;:：，。！？；、()\[\]""''《》·—·…～–—/=@#\\%^&*+|{}<>\n\r\t]', '', text)
 
     # 7. 修复常见的格式问题
     # 修复括号不匹配问题（移除孤立的括号）
@@ -886,15 +886,27 @@ if __name__ == '__main__':
         # 自动查找可用端口
         import socket
 
+        port_found = False
         for try_port in default_ports:
             with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
                 if s.connect_ex(('localhost', try_port)) != 0:
                     port = try_port
+                    port_found = True
                     print(f"\n🚀 启动 Web 服务")
                     print(f"📍 访问地址: http://localhost:{port}")
                     print(f"📝 按 Ctrl+C 停止服务\n")
                     app.run(debug=args.debug, host='0.0.0.0', port=port)
                     break
-        else:
-            print("❌ 无法找到可用端口，请使用 --port 参数手动指定")
-            print(f"   示例: python app.py --port 9999")
+
+        if not port_found:
+            # 所有默认端口都被占用，使用随机端口
+            print("⚠️  所有默认端口都被占用，正在使用随机端口...")
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+                s.bind(('', 0))
+                s.listen(1)
+                port = s.getsockname()[1]
+
+            print(f"\n🚀 启动 Web 服务")
+            print(f"📍 访问地址: http://localhost:{port}")
+            print(f"📝 按 Ctrl+C 停止服务\n")
+            app.run(debug=args.debug, host='0.0.0.0', port=port)
