@@ -43,6 +43,7 @@ from src.evaluator import ScriptEvaluator
 from src.report_generator import ReportGenerator
 from src.history_manager import HistoryManager
 from src.novel_generator import NovelGenerator
+from src.cover_generator import CoverGenerator
 from src.api_client import DoubaoAPIClient
 
 app = Flask(__name__)
@@ -904,6 +905,153 @@ def import_history():
 
 # ==================== 小说生成器 API ====================
 
+@app.route('/api/novel/history', methods=['GET'])
+def get_novel_history():
+    """获取小说生成历史记录"""
+    try:
+        limit = request.args.get('limit', 20, type=int)
+        offset = request.args.get('offset', 0, type=int)
+        search = request.args.get('search', '')
+
+        # 获取所有历史记录
+        all_records = history_manager.get_records(limit=1000, offset=0, search=search)
+
+        # 只返回小说相关的记录
+        novel_types = ['novel_generation', 'novel_evaluation', 'script_to_novel', 'novel_improvement']
+        novel_records = [r for r in all_records.get('records', [])
+                        if r.get('type') in novel_types]
+
+        # 分页
+        paginated_records = novel_records[offset:offset+limit]
+
+        return jsonify({
+            'success': True,
+            'records': paginated_records,
+            'total': len(novel_records),
+            'limit': limit,
+            'offset': offset
+        })
+    except Exception as e:
+        logger.error(f"获取小说历史记录失败: {str(e)}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/download/<record_id>', methods=['GET'])
+def download_novel(record_id):
+    """下载小说内容为TXT文件"""
+    try:
+        # 读取完整记录文件
+        record_file = os.path.join(history_manager.history_dir, f"{record_id}.json")
+
+        if not os.path.exists(record_file):
+            return jsonify({
+                'success': False,
+                'error': '记录不存在'
+            }), 404
+
+        with open(record_file, 'r', encoding='utf-8') as f:
+            record = json.load(f)
+
+        # 提取小说内容
+        content_parts = []
+
+        # 添加标题
+        record_type = record.get('type', '')
+        if record_type == 'novel_generation':
+            result = record.get('result', {})
+            title = result.get('title', '未命名小说')
+            content_parts.append(f"{title}\n")
+            content_parts.append("\n")
+
+            # 添加章节
+            chapters = result.get('chapters', [])
+            if chapters:
+                # 计算总字数（只计算正文）
+                total_word_count = 0
+
+                for ch in chapters:
+                    chapter_num = ch.get('chapter_number', '')
+                    chapter_title = ch.get('title', '')
+                    chapter_content = ch.get('content', '')
+
+                    # 添加章节标题
+                    content_parts.append(f"第{chapter_num}章 {chapter_title}\n\n")
+
+                    # 添加章节正文
+                    content_parts.append(chapter_content)
+                    content_parts.append("\n\n")
+
+                    # 统计字数
+                    total_word_count += len(chapter_content)
+
+                # 在文件末尾添加字数统计
+                content_parts.append("="*50 + "\n")
+                content_parts.append(f"总字数：{total_word_count}字\n")
+                content_parts.append(f"章节数：{len(chapters)}章\n")
+
+            elif result.get('content'):
+                # 纯文本格式（可能是未完成的内容）
+                content = result.get('content', '')
+                content_parts.append(content)
+                content_parts.append("\n\n")
+                content_parts.append("="*50 + "\n")
+                content_parts.append(f"总字数：{len(content)}字\n")
+        elif record_type == 'script_to_novel':
+            result = record.get('result', {})
+            content = result.get('content', '')
+            content_parts.append(content)
+            content_parts.append("\n\n")
+            content_parts.append("="*50 + "\n")
+            content_parts.append(f"总字数：{len(content)}字\n")
+        elif record_type == 'novel_improvement':
+            result = record.get('result', {})
+            content = result.get('improved_content', result.get('content', ''))
+            content_parts.append(content)
+            content_parts.append("\n\n")
+            content_parts.append("="*50 + "\n")
+            content_parts.append(f"总字数：{len(content)}字\n")
+
+        # 合并内容
+        full_content = '\n'.join(content_parts)
+
+        # 生成文件名（使用标题或ID）
+        if record_type == 'novel_generation':
+            result = record.get('result', {})
+            title = result.get('title', '未命名小说')
+            # 清理文件名中的特殊字符，但保留书名号和常用标点
+            # 移除可能导致文件系统问题的字符：/ \ : * ? " < > |
+            safe_title = title
+            for char in ['/', '\\', ':', '*', '?', '"', '<', '>', '|']:
+                safe_title = safe_title.replace(char, '')
+            safe_title = safe_title.strip()
+            filename = f"{safe_title}.txt" if safe_title and safe_title != '未命名小说' else f"{record_id}.txt"
+        else:
+            filename = f"{record_id}.txt"
+
+        # 返回文件
+        from flask import send_file
+        import io
+
+        buffer = io.BytesIO(full_content.encode('utf-8'))
+        return send_file(
+            buffer,
+            as_attachment=True,
+            download_name=filename,
+            mimetype='text/plain'
+        )
+
+    except Exception as e:
+        logger.error(f"下载小说失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
 @app.route('/api/novel/generate', methods=['POST'])
 def generate_novel():
     """AI生成小说"""
@@ -954,6 +1102,184 @@ def generate_novel():
 
     except Exception as e:
         logger.error(f"AI生成小说失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/generate-outline', methods=['POST'])
+def generate_novel_outline():
+    """完整模式第1步：生成故事大纲"""
+    try:
+        data = request.get_json()
+
+        # 获取生成参数
+        params = {
+            'genre': data.get('genre', '都市'),
+            'style': data.get('style', '轻松'),
+            'chapters': data.get('chapters', 20),
+            'outline': data.get('outline', ''),
+            'characters': data.get('characters', []),
+            'world_setting': data.get('world_setting', ''),
+            'target_audience': data.get('target_audience', '年轻读者'),
+            'tone': data.get('tone', '轻松愉快'),
+            'theme': data.get('theme', '成长与爱情'),
+        }
+
+        # 创建小说生成器
+        api_client = DoubaoAPIClient()
+        generator = NovelGenerator(api_client)
+
+        # 生成大纲
+        logger.info(f"开始生成小说大纲，题材：{params['genre']}")
+        result = generator.generate_outline(params)
+
+        if result.get('success'):
+            logger.info("大纲生成成功")
+            return jsonify({
+                'success': True,
+                'data': result
+            })
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        logger.error(f"生成大纲失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/generate-chapters', methods=['POST'])
+def generate_novel_chapters():
+    """完整模式第3步：根据大纲生成所有章节"""
+    try:
+        data = request.get_json()
+
+        outline = data.get('outline')
+        params = data.get('params', {})
+
+        if not outline:
+            return jsonify({
+                'success': False,
+                'error': '缺少大纲信息'
+            }), 400
+
+        # 创建小说生成器
+        api_client = DoubaoAPIClient()
+        generator = NovelGenerator(api_client)
+
+        # 分批生成章节
+        logger.info("开始分批生成章节...")
+        result = generator.generate_all_chapters(outline, params)
+
+        if result.get('success'):
+            # 保存完整小说到历史记录
+            history_record = {
+                'id': str(uuid.uuid4()),
+                'type': 'novel_generation',
+                'genre': params.get('genre', ''),
+                'style': params.get('style', ''),
+                'result': result,
+                'timestamp': history_manager._get_timestamp()
+            }
+            history_manager.add_record(history_record)
+
+            logger.info(f"完整小说生成成功，共{len(result.get('chapters', []))}章")
+            return jsonify({
+                'success': True,
+                'data': result
+            })
+        else:
+            return jsonify(result), 500
+
+    except Exception as e:
+        logger.error(f"生成章节失败: {str(e)}")
+        logger.error(traceback.format_exc())
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@app.route('/api/novel/continue/<record_id>', methods=['POST'])
+def continue_novel_generation(record_id):
+    """继续生成失败的批次"""
+    try:
+        # 读取历史记录
+        record = history_manager.get_record(record_id)
+        if not record:
+            return jsonify({
+                'success': False,
+                'error': '记录不存在'
+            }), 404
+
+        # 检查是否是小说生成记录
+        if record.get('type') != 'novel_generation':
+            return jsonify({
+                'success': False,
+                'error': '该记录不是小说生成记录'
+            }), 400
+
+        result = record.get('result', {})
+        failed_batches = result.get('failed_batches', [])
+
+        if not failed_batches:
+            return jsonify({
+                'success': False,
+                'error': '没有失败的批次需要重新生成'
+            }), 400
+
+        # 提取信息
+        outline = {
+            'title': result.get('title', '未命名小说'),
+            'genre': record.get('genre', ''),
+            'outline': result.get('outline', ''),
+            'characters': result.get('characters', []),
+            'themes': result.get('themes', []),
+            'target_audience': result.get('target_audience', ''),
+            'chapter_plan': result.get('chapter_plan', [])
+        }
+
+        params = {
+            'genre': record.get('genre', ''),
+            'style': record.get('style', ''),
+            'chapters': result.get('total_chapters_requested', len(result.get('chapters', [])))
+        }
+
+        # 创建小说生成器
+        api_client = DoubaoAPIClient()
+        generator = NovelGenerator(api_client)
+
+        # 继续生成失败的批次
+        logger.info(f"继续生成小说，失败批次：{failed_batches}")
+        continue_result = generator.continue_failed_batches(
+            outline,
+            params,
+            result.get('chapters', []),
+            failed_batches
+        )
+
+        if continue_result.get('success'):
+            # 更新历史记录
+            updated_record = record.copy()
+            updated_record['result'] = continue_result
+            history_manager.update_record(record_id, updated_record)
+
+            logger.info(f"继续生成成功，共{len(continue_result.get('chapters', []))}章")
+            return jsonify({
+                'success': True,
+                'data': continue_result
+            })
+        else:
+            return jsonify(continue_result), 500
+
+    except Exception as e:
+        logger.error(f"继续生成失败: {str(e)}")
         logger.error(traceback.format_exc())
         return jsonify({
             'success': False,

@@ -164,6 +164,38 @@ class HistoryManager:
             logger.error(f"获取评测记录详情失败: {str(e)}")
             return None
 
+    def update_record(self, record_id: str, updated_data: Dict[str, Any]) -> bool:
+        """
+        更新评测记录
+
+        Args:
+            record_id: 记录ID
+            updated_data: 更新的数据
+
+        Returns:
+            是否更新成功
+        """
+        try:
+            history = self._load_history()
+            records = history.get('records', [])
+
+            # 找到要更新的记录
+            for i, record in enumerate(records):
+                if record.get('id') == record_id:
+                    # 更新记录
+                    records[i] = updated_data
+                    # 保存到文件
+                    self._save_history(history)
+                    logger.info(f"更新记录成功: {record_id}")
+                    return True
+
+            logger.warning(f"未找到要更新的记录: {record_id}")
+            return False
+
+        except Exception as e:
+            logger.error(f"更新评测记录失败: {str(e)}")
+            return False
+
     def delete_record(self, record_id: str) -> bool:
         """
         删除评测记录
@@ -484,3 +516,12 @@ class HistoryManager:
         has_dimensions = 'dimensions' in data and isinstance(data['dimensions'], dict)
 
         return has_overall or has_dimensions
+
+    def _get_timestamp(self) -> str:
+        """
+        获取当前时间戳（ISO格式）
+
+        Returns:
+            ISO格式的时间戳字符串
+        """
+        return datetime.now().isoformat()

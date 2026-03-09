@@ -624,11 +624,37 @@
                             style="flex: 1;">
                         🔧 AI改进小说
                     </button>
+                    <button @click="novelTab = 'history'"
+                            :class="['btn', novelTab === 'history' ? 'btn-primary' : 'btn-secondary']"
+                            style="flex: 1;">
+                        📚 历史记录
+                    </button>
                 </div>
 
                 <!-- AI生成小说 -->
                 <div v-if="novelTab === 'generate'">
                     <h3 style="margin: 0 0 20px 0;">✨ AI生成小说</h3>
+
+                    <!-- 生成模式选择 -->
+                    <div style="margin-bottom: 30px; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 12px; color: white;">
+                        <h4 style="margin: 0 0 15px 0; font-size: 1.1rem;">🎯 选择生成模式</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <label style="display: block; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s;" :style="{border: novelParams.mode === 'quick' ? '2px solid white' : '2px solid transparent'}">
+                                <input type="radio" v-model="novelParams.mode" value="quick" style="margin-right: 10px;">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 5px;">⚡ 快速模式（推荐）</div>
+                                    <div style="font-size: 0.85rem; opacity: 0.9;">生成3-5章完整内容<br>约3000-5000字 | 耗时30秒-1分钟</div>
+                                </div>
+                            </label>
+                            <label style="display: block; padding: 15px; background: rgba(255,255,255,0.1); border-radius: 8px; cursor: pointer; border: 2px solid transparent; transition: all 0.3s;" :style="{border: novelParams.mode === 'full' ? '2px solid white' : '2px solid transparent'}">
+                                <input type="radio" v-model="novelParams.mode" value="full" style="margin-right: 10px;">
+                                <div>
+                                    <div style="font-weight: 600; font-size: 1.05rem; margin-bottom: 5px;">📚 完整模式</div>
+                                    <div style="font-size: 0.85rem; opacity: 0.9;">生成大纲+所有章节<br>约15000-20000字 | 耗时5-10分钟</div>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
 
                     <div class="form-group" style="margin-bottom: 20px;">
                         <label>题材</label>
@@ -677,8 +703,28 @@
                         <textarea v-model="novelParams.world_setting" class="form-control" rows="3" placeholder="输入世界观设定..."></textarea>
                     </div>
 
-                    <button class="btn btn-primary" @click="generateNovel" :disabled="novelGenerating">
-                        🚀 {{ novelGenerating ? '生成中...' : '开始生成' }}
+                    <!-- 完整模式进度显示 -->
+                    <div v-if="novelParams.mode === 'full' && novelGenerationProgress.show" style="margin-bottom: 20px; padding: 20px; background: #f0f9ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <h4 style="margin: 0 0 15px 0; color: #1e40af;">📖 生成进度</h4>
+                        <div style="margin-bottom: 10px;">
+                            <strong>当前阶段：</strong> {{ novelGenerationProgress.stage }}
+                        </div>
+                        <div style="margin-bottom: 10px;">
+                            <strong>已完成：</strong> {{ novelGenerationProgress.completed }} / {{ novelGenerationProgress.total }}
+                        </div>
+                        <div v-if="novelGenerationProgress.outline" style="margin-bottom: 15px;">
+                            <strong>故事大纲：</strong>
+                            <div style="margin-top: 10px; padding: 10px; background: white; border-radius: 6px; max-height: 200px; overflow-y: auto;">
+                                {{ novelGenerationProgress.outline }}
+                            </div>
+                        </div>
+                        <div style="font-size: 0.9rem; color: #64748b;">
+                            💡 完整模式分步骤生成，请稍候...
+                        </div>
+                    </div>
+
+                    <button class="btn btn-primary" @click="generateNovel" :disabled="novelGenerating" style="width: 100%; padding: 15px; font-size: 1.1rem;">
+                        🚀 {{ novelGenerating ? novelGenerationProgress.stage || '生成中...' : (novelParams.mode === 'full' ? '开始完整生成' : '开始快速生成') }}
                     </button>
                 </div>
 
@@ -776,6 +822,75 @@
                     <button class="btn btn-primary" @click="improveNovel" :disabled="novelImproving || !improveNovelContent || improveFocusAreas.length === 0">
                         🔧 {{ novelImproving ? '改进中...' : '开始改进' }}
                     </button>
+                </div>
+
+                <!-- 小说历史记录 -->
+                <div v-if="novelTab === 'history'">
+                    <h3 style="margin: 0 0 20px 0;">📚 小说历史记录</h3>
+
+                    <!-- 操作按钮 -->
+                    <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+                        <button class="btn btn-secondary" @click="loadNovelHistory" :disabled="novelHistoryLoading">
+                            🔄 {{ novelHistoryLoading ? '加载中...' : '刷新' }}
+                        </button>
+                    </div>
+
+                    <!-- 历史记录列表 -->
+                    <div v-if="novelHistoryRecords.length > 0" style="display: flex; flex-direction: column; gap: 15px;">
+                        <div v-for="record in novelHistoryRecords" :key="record.id"
+                             style="padding: 20px; background: #f9fafb; border-radius: 8px; border-left: 4px solid var(--primary);">
+                            <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 10px;">
+                                <div>
+                                    <h4 style="margin: 0 0 5px 0; font-size: 1.1rem;">
+                                        {{ getNovelDisplayTitle(record) }}
+                                    </h4>
+                                    <div style="font-size: 0.9rem; color: var(--gray-600);">
+                                        {{ getNovelTypeLabel(record.type) }} | {{ formatTimestamp(record.timestamp) }}
+                                    </div>
+                                </div>
+                                <div style="display: flex; gap: 8px;">
+                                    <!-- 继续生成按钮（仅当有失败批次时显示） -->
+                                    <button v-if="record.result?.failed_batches && record.result.failed_batches.length > 0"
+                                            @click="continueNovelGeneration(record.id)"
+                                            :disabled="continuingGeneration === record.id"
+                                            style="padding: 8px 16px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                                        {{ continuingGeneration === record.id ? '⏳ 生成中...' : '🔄 继续生成' }}
+                                    </button>
+                                    <button @click="downloadNovel(record.id)"
+                                            style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 14px;">
+                                        📥 下载TXT
+                                    </button>
+                                </div>
+                            </div>
+
+                            <!-- 详细信息 -->
+                            <div style="font-size: 0.9rem; color: var(--gray-700); line-height: 1.6;">
+                                <div v-if="record.type === 'novel_generation'">
+                                    <div style="margin-bottom: 8px;">
+                                        <strong>📖 标题:</strong> {{ getNovelDisplayTitle(record) }}
+                                    </div>
+                                    <div>
+                                        <strong>题材:</strong> {{ record.genre || '-' }} |
+                                        <strong>风格:</strong> {{ record.style || '-' }} |
+                                        <strong>章节数:</strong> {{ record.result?.chapters?.length || record.result?.total_chapters_generated || 0 }}章
+                                    </div>
+                                    <div v-if="record.result?.partial_success" style="color: #f59e0b; margin-top: 5px;">
+                                        ⚠️ 部分成功，失败批次：{{ record.result?.failed_batches?.join(', ') || '-' }}
+                                    </div>
+                                </div>
+                                <div v-else>
+                                    <strong>记录ID:</strong> {{ record.id }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 空状态 -->
+                    <div v-else style="text-align: center; padding: 60px 20px; background: #f9fafb; border-radius: 8px;">
+                        <div style="font-size: 48px; margin-bottom: 20px;">📭</div>
+                        <h4 style="margin: 0 0 10px 0; color: var(--gray-600);">暂无小说记录</h4>
+                        <p style="margin: 0; color: var(--gray-500);">生成、评测或改写小说后，记录会显示在这里</p>
+                    </div>
                 </div>
             </div>
 
@@ -1350,6 +1465,7 @@
                     // 小说创作相关
                     novelTab: 'generate',
                     novelParams: {
+                        mode: 'quick',  // quick 或 full
                         genre: '都市',
                         style: '轻松',
                         length: 50000,
@@ -1358,6 +1474,15 @@
                         world_setting: ''
                     },
                     novelGenerating: false,
+                    novelGenerationProgress: {
+                        show: false,
+                        stage: '',
+                        completed: 0,
+                        total: 0,
+                        outline: '',
+                        currentBatch: 0,
+                        totalBatches: 0
+                    },
                     novelContent: '',
                     novelEvaluating: false,
                     novelEvaluationResult: null,
@@ -1371,7 +1496,10 @@
                     scriptConverting: false,
                     improveNovelContent: '',
                     improveFocusAreas: [],
-                    novelImproving: false
+                    novelImproving: false,
+                    novelHistoryRecords: [],
+                    novelHistoryLoading: false,
+                    continuingGeneration: null  // 正在继续生成的记录ID
                 }
             },
             computed: {
@@ -1914,24 +2042,257 @@
                     this.navigationHistory.push(this.stage)
                     this.previousStage = this.stage
                     this.stage = 'novel'
+                    // 加载小说历史记录
+                    this.loadNovelHistory()
+                },
+                // 加载小说历史记录
+                async loadNovelHistory() {
+                    this.novelHistoryLoading = true
+                    try {
+                        const res = await axios.get('/api/novel/history', {
+                            params: { limit: 50, offset: 0 }
+                        })
+                        if (res.data.success) {
+                            this.novelHistoryRecords = res.data.records
+                        }
+                    } catch (error) {
+                        console.error('加载小说历史记录失败:', error)
+                        this.showError('加载历史记录失败')
+                    } finally {
+                        this.novelHistoryLoading = false
+                    }
+                },
+                // 下载小说
+                async downloadNovel(recordId) {
+                    try {
+                        // 创建下载链接（使用后端设置的文件名）
+                        const url = `/api/novel/download/${recordId}`
+                        const link = document.createElement('a')
+                        link.href = url
+                        // 不设置link.download，让后端的download_name生效
+                        document.body.appendChild(link)
+                        link.click()
+                        document.body.removeChild(link)
+                    } catch (error) {
+                        console.error('下载失败:', error)
+                        this.showError('下载失败')
+                    }
+                },
+                // 继续生成失败的批次
+                async continueNovelGeneration(recordId) {
+                    try {
+                        if (!confirm('确定要继续生成失败的章节吗？这可能需要几分钟时间。')) {
+                            return
+                        }
+
+                        this.continuingGeneration = recordId
+
+                        const res = await axios.post(`/api/novel/continue/${recordId}`)
+
+                        if (res.data.success) {
+                            const novel = res.data.data
+
+                            if (novel.partial_success) {
+                                alert(
+                                    `⚠️ 部分成功！\n\n` +
+                                    `已生成：${novel.total_chapters_generated}章\n` +
+                                    `仍失败批次：${novel.failed_batches.join(', ')}\n\n` +
+                                    `您可以稍后再次尝试继续生成`
+                                )
+                            } else {
+                                alert(`✅ 继续生成成功！共${novel.total_chapters_generated}章`)
+                            }
+
+                            // 刷新历史记录
+                            await this.loadNovelHistory()
+                        } else {
+                            this.showError('继续生成失败：' + (res.data.error || '未知错误'))
+                        }
+                    } catch (error) {
+                        console.error('继续生成失败:', error)
+                        this.showError('继续生成失败：' + (error.response?.data?.error || error.message || '未知错误'))
+                    } finally {
+                        this.continuingGeneration = null
+                    }
+                },
+                // 获取小说类型标签
+                getNovelTypeLabel(type) {
+                    const labels = {
+                        'novel_generation': '✨ AI生成小说',
+                        'novel_evaluation': '📊 评测小说',
+                        'script_to_novel': '🎬 剧本改小说',
+                        'novel_improvement': '🔧 AI改进小说'
+                    }
+                    return labels[type] || type
+                },
+                // 获取小说显示标题（智能处理各种情况）
+                getNovelDisplayTitle(record) {
+                    // 优先显示小说标题（任何标题都直接显示）
+                    if (record.result?.title && record.result.title !== '未命名小说') {
+                        return record.result.title
+                    }
+                    // 没有标题时才显示操作类型
+                    return this.getNovelTypeLabel(record.type)
+                },
+                // 格式化时间戳
+                formatTimestamp(timestamp) {
+                    if (!timestamp) return '-'
+                    const date = new Date(timestamp)
+                    return date.toLocaleString('zh-CN', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                    })
                 },
                 // AI生成小说
                 async generateNovel() {
                     this.novelGenerating = true
+
+                    // 重置进度
+                    this.novelGenerationProgress = {
+                        show: false,
+                        stage: '',
+                        completed: 0,
+                        total: 0,
+                        outline: '',
+                        currentBatch: 0,
+                        totalBatches: 0
+                    }
+
                     try {
-                        const res = await axios.post('/api/novel/generate', this.novelParams)
-                        if (res.data.success) {
-                            alert('小说生成成功！')
-                            console.log('生成结果:', res.data.data)
-                            // 可以在这里跳转到结果页面或显示结果
-                        } else {
-                            this.showError('生成失败：' + (res.data.error || '未知错误'))
+                        // 快速模式：直接生成
+                        if (this.novelParams.mode === 'quick') {
+                            const res = await axios.post('/api/novel/generate', this.novelParams)
+                            if (res.data.success) {
+                                const result = res.data.data
+                                // 显示生成的内容
+                                if (result.content) {
+                                    // 纯文本格式
+                                    this.novelContent = result.content
+                                    alert('小说生成成功！已自动切换到"评测小说"页面查看内容')
+                                } else if (result.chapters && result.chapters.length > 0) {
+                                    // JSON格式，有章节
+                                    this.novelContent = `# ${result.title}\n\n` + result.chapters.map(ch =>
+                                        `## ${ch.title}\n\n${ch.content}`
+                                    ).join('\n\n')
+                                    alert(`小说生成成功！共${result.chapters.length}章，已自动切换到"评测小说"页面查看内容`)
+                                } else {
+                                    alert('小说生成成功！但未检测到有效内容，请检查后台日志')
+                                }
+
+                                // 切换到评测小说页面，用户可以看到生成的内容
+                                this.novelTab = 'evaluate'
+
+                                // 刷新历史记录
+                                await this.loadNovelHistory()
+                            } else {
+                                this.showError('生成失败：' + (res.data.error || '未知错误'))
+                            }
+                        }
+                        // 完整模式：分步骤生成
+                        else {
+                            await this.generateNovelFullMode()
                         }
                     } catch (error) {
                         console.error('生成小说失败:', error)
                         this.showError('生成失败：' + (error.response?.data?.error || error.message))
                     } finally {
                         this.novelGenerating = false
+                        this.novelGenerationProgress.show = false
+                    }
+                },
+                // 完整模式生成
+                async generateNovelFullMode() {
+                    try {
+                        // 第1步：生成大纲
+                        this.novelGenerationProgress.show = true
+                        this.novelGenerationProgress.stage = '第1步：生成故事大纲...'
+                        this.novelGenerationProgress.total = 3
+
+                        const outlineRes = await axios.post('/api/novel/generate-outline', this.novelParams)
+                        if (!outlineRes.data.success) {
+                            throw new Error(outlineRes.data.error || '生成大纲失败')
+                        }
+
+                        const outline = outlineRes.data.data
+                        this.novelGenerationProgress.outline = outline.outline
+                        this.novelGenerationProgress.completed = 1
+
+                        // 第2步：询问用户是否继续
+                        this.novelGenerationProgress.stage = '第2步：准备生成完整内容'
+
+                        // 自动继续（也可以改为询问用户）
+                        const chapterCount = this.novelParams.chapters || 15
+                        const estimatedTime = Math.ceil(chapterCount / 3) * 2  // 每批约2分钟
+                        const continueGen = confirm(
+                            `故事大纲已生成完成！\n\n` +
+                            `标题：${outline.title}\n` +
+                            `概要：${outline.outline?.substring(0, 200)}...\n\n` +
+                            `是否继续生成所有章节？\n` +
+                            `总计${chapterCount}章，分${Math.ceil(chapterCount / 3)}批生成\n` +
+                            `预计需要${estimatedTime}-${estimatedTime * 1.5}分钟\n\n` +
+                            `⚠️ 生成过程中请勿关闭页面`
+                        )
+
+                        if (!continueGen) {
+                            // 保存大纲到内容区
+                            this.novelContent = `# ${outline.title}\n\n## 故事大纲\n\n${outline.outline}\n\n## 章节规划\n\n${outline.chapter_plan || '暂无'}`
+                            this.novelTab = 'evaluate'
+                            alert('已保存大纲，您可以稍后手动生成章节')
+                            return
+                        }
+
+                        // 第3步：分批生成所有章节
+                        this.novelGenerationProgress.stage = '第3步：生成章节内容...'
+                        this.novelGenerationProgress.completed = 2
+
+                        const chaptersRes = await axios.post('/api/novel/generate-chapters', {
+                            outline: outline,
+                            params: this.novelParams
+                        })
+
+                        if (!chaptersRes.data.success) {
+                            throw new Error(chaptersRes.data.error || '生成章节失败')
+                        }
+
+                        const novel = chaptersRes.data.data
+                        this.novelGenerationProgress.completed = 3
+
+                        // 组装最终内容
+                        let content = `# ${novel.title}\n\n`
+                        if (novel.outline) {
+                            content += `## 故事大纲\n\n${novel.outline}\n\n`
+                        }
+
+                        if (novel.chapters && novel.chapters.length > 0) {
+                            content += novel.chapters.map(ch =>
+                                `## 第${ch.chapter_number}章 ${ch.title}\n\n${ch.content}`
+                            ).join('\n\n')
+                        }
+
+                        this.novelContent = content
+                        this.novelTab = 'evaluate'
+
+                        // 显示结果提示
+                        if (novel.partial_success) {
+                            alert(
+                                `⚠️ 部分成功！\n\n` +
+                                `已生成：${novel.total_chapters_generated}章\n` +
+                                `失败批次：${novel.failed_batches.join(', ')}\n\n` +
+                                `内容已保存，您可以稍后重试失败的章节`
+                            )
+                        } else {
+                            alert(`✅ 完整生成成功！共生成${novel.chapters?.length || 0}章`)
+                        }
+
+                        // 刷新历史记录
+                        await this.loadNovelHistory()
+
+                    } catch (error) {
+                        console.error('完整模式生成失败:', error)
+                        throw error
                     }
                 },
                 // 评测小说
@@ -1944,6 +2305,8 @@
                         if (res.data.success) {
                             this.novelEvaluationResult = res.data.data
                             alert('评测完成！')
+                            // 刷新历史记录
+                            await this.loadNovelHistory()
                         } else {
                             this.showError('评测失败：' + (res.data.error || '未知错误'))
                         }
@@ -1965,6 +2328,8 @@
                         if (res.data.success) {
                             alert('改写成功！')
                             console.log('改写结果:', res.data.data)
+                            // 刷新历史记录
+                            await this.loadNovelHistory()
                         } else {
                             this.showError('改写失败：' + (res.data.error || '未知错误'))
                         }
@@ -1987,6 +2352,8 @@
                         if (res.data.success) {
                             alert('改进成功！')
                             console.log('改进结果:', res.data.data)
+                            // 刷新历史记录
+                            await this.loadNovelHistory()
                         } else {
                             this.showError('改进失败：' + (res.data.error || '未知错误'))
                         }
