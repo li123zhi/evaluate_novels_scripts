@@ -107,6 +107,29 @@ class ScriptEvaluator:
             处理后的剧本内容
         """
         import re
+        import logging
+        logger = logging.getLogger(__name__)
+
+        # 0. 验证和修复文本质量（特别是DOCX提取的文本）
+        total_chars = len(content)
+        chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', content))
+        english_chars = len(re.findall(r'[a-zA-Z]', content))
+        valid_chars = chinese_chars + english_chars
+
+        # 如果有效字符比例过低，可能是乱码
+        if total_chars > 100:
+            valid_ratio = valid_chars / total_chars
+            if valid_ratio < 0.3:
+                logger.warning(f"⚠️ 文本质量警告: 有效字符比例 {valid_ratio:.2%}，可能存在乱码")
+                logger.warning(f"   总字符: {total_chars}, 中文: {chinese_chars}, 英文: {english_chars}")
+                # 尝试更激进的清理
+                # 只保留中文、英文、数字和常用标点
+                content = re.sub(r'[^\u4e00-\u9fffa-zA-Z0-9\s\.,!?;:：，。！？；、()\[\]""''《》·—\-–—/]', '', content)
+                # 移除多余空白
+                content = re.sub(r'\s+', ' ', content)
+                # 恢复段落结构
+                content = re.sub(r'[。！？](?=[^\\s])', r'\g<0>\n\n', content)
+                logger.info("✓ 已应用激进清理模式，移除了可疑字符")
 
         # 1. 移除 BOM 标记
         content = content.replace('\ufeff', '')
@@ -285,15 +308,53 @@ class ScriptEvaluator:
         try:
             logger.info("⏳ 调用豆包 API 进行评测...")
             result = self.api_client.chat_with_json_response(prompt)
+
             # 验证返回结果是否为字典
             if not isinstance(result, dict):
+                logger.error(f"❌ API 返回结果不是字典类型，而是 {type(result).__name__}: {result}")
                 raise ValueError(f"API 返回结果不是字典类型，而是 {type(result).__name__}: {result}")
+
+            # 检查是否有错误标记
+            if 'error' in result:
+                logger.warning(f"⚠️ API 返回结果包含错误标记: {result.get('error')}")
+                logger.warning(f"原始值: {result.get('raw_value', 'N/A')}")
+
+                # 尝试从 raw_value 中提取分数
+                raw_value = result.get('raw_value')
+                if isinstance(raw_value, (int, float)):
+                    # 构造一个基本的结果结构
+                    result = {
+                        'dimension': dimension,
+                        'dimension_name': dimension_name,
+                        'total_score': raw_value,
+                        'max_score': 100,
+                        'api_error': result.get('error', '未知错误'),
+                        'warning': 'API 返回格式异常，已尝试修复'
+                    }
+                else:
+                    # 无法修复，返回默认分数
+                    result = {
+                        'dimension': dimension,
+                        'dimension_name': dimension_name,
+                        'total_score': 0,
+                        'max_score': 100,
+                        'api_error': result.get('error', '未知错误'),
+                        'warning': 'API 返回格式异常，使用默认分数'
+                    }
 
             score = result.get('total_score', 0)
             max_score = result.get('max_score', 100)
-            logger.info(f"✅ 维度 {dimension_name} 评测成功")
-            logger.info(f"📈 得分: {score}/{max_score}")
-            print(f"✅ [{dimension}] 评测完成: {score}/{max_score} 分")
+
+            # 记录是否有警告
+            if 'api_error' in result:
+                logger.warning(f"⚠️ 维度 {dimension_name} 评测完成，但有警告: {result.get('api_error')}")
+                logger.warning(f"📈 得分: {score}/{max_score} (可能不准确)")
+                print(f"⚠️ [{dimension}] 评测完成: {score}/{max_score} 分 (API 返回异常)")
+            else:
+                logger.info(f"✅ 维度 {dimension_name} 评测成功")
+                logger.info(f"📈 得分: {score}/{max_score}")
+                print(f"✅ [{dimension}] 评测完成: {score}/{max_score} 分")
+
             logger.info("=" * 50)
 
             return result

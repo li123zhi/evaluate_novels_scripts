@@ -87,8 +87,11 @@ createApp({
         // 验证并设置文件
         validateAndSetFile(file) {
             // 检查文件类型
-            if (!file.name.endsWith('.txt')) {
-                this.showError('只支持 .txt 格式的剧本文件');
+            const validExtensions = ['.txt', '.pdf', '.docx'];
+            const hasValidExtension = validExtensions.some(ext => file.name.endsWith(ext));
+
+            if (!hasValidExtension) {
+                this.showError('只支持 .txt、.pdf、.docx 格式的剧本文件');
                 return;
             }
 

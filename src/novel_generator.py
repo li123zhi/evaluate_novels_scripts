@@ -686,7 +686,7 @@ class NovelGenerator:
             response = self.ai_client.chat(
                 prompt=prompt,
                 system_prompt="你是一位专业的网络小说编辑和评论家，擅长评估小说质量。",
-                response_format="json"
+                json_mode=True
             )
 
             # 解析响应

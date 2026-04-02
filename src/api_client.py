@@ -200,7 +200,8 @@ class DoubaoAPIClient:
     def chat_with_json_response(
         self,
         prompt: str,
-        system_prompt: Optional[str] = None
+        system_prompt: Optional[str] = None,
+        max_parse_retries: int = 2
     ) -> Dict[str, Any]:
         """
         发送聊天请求并解析 JSON 响应
@@ -208,46 +209,128 @@ class DoubaoAPIClient:
         Args:
             prompt: 用户提示词
             system_prompt: 系统提示词
+            max_parse_retries: 解析失败时的最大重试次数
 
         Returns:
             解析后的 JSON 数据
         """
-        response_text = self.chat(prompt, system_prompt, json_mode=True)
-
-        # 记录响应用于调试
         import logging
         logger = logging.getLogger(__name__)
-        logger.debug(f"API 响应内容 (前500字符): {response_text[:500]}")
 
-        # 清理响应文本 - 移除可能存在的 markdown 代码块标记
-        cleaned_response = response_text.strip()
-        if cleaned_response.startswith("```json"):
-            cleaned_response = cleaned_response[7:]
-        elif cleaned_response.startswith("```"):
-            cleaned_response = cleaned_response[3:]
-        if cleaned_response.endswith("```"):
-            cleaned_response = cleaned_response[:-3]
-        cleaned_response = cleaned_response.strip()
+        # 添加更强的 JSON 格式要求到系统提示词
+        enhanced_system_prompt = """你必须严格按照 JSON 格式返回结果，不要添加任何其他文本或解释。
+返回的内容必须是一个完整的 JSON 对象，以 { 开始，以 } 结束。
+不要只返回数字、字符串或其他单一值，必须返回完整的 JSON 对象结构。"""
 
-        try:
-            parsed = json.loads(cleaned_response)
-            # 处理 API 返回 list 的情况（提取第一个元素）
-            if isinstance(parsed, list) and len(parsed) > 0:
-                return parsed[0]
-            # 处理 API 返回其他类型的情况
-            if not isinstance(parsed, dict):
-                return {"error": f"API 返回非字典类型: {type(parsed).__name__}", "raw_value": parsed}
-            return parsed
-        except json.JSONDecodeError as e:
-            # 如果 JSON 解析失败，检查是否是单个值（如数字）
+        if system_prompt:
+            enhanced_system_prompt = system_prompt + "\n\n" + enhanced_system_prompt
+
+        for retry in range(max_parse_retries):
             try:
-                # 尝试直接解析为数字
-                cleaned_response_stripped = cleaned_response.strip()
-                if cleaned_response_stripped.replace('.', '').replace('-', '').replace('e', '').replace('E', '').replace('+', '').isdigit():
-                    return {"error": "API 返回了单个数值而非 JSON 对象", "raw_value": float(cleaned_response_stripped)}
-            except:
-                pass
-            raise RuntimeError(f"解析模型 JSON 响应失败: {str(e)}\n原始响应: {response_text}\n清理后响应: {cleaned_response}")
+                response_text = self.chat(prompt, enhanced_system_prompt, json_mode=True)
+
+                # 记录响应用于调试
+                logger.debug(f"API 响应内容 (前500字符): {response_text[:500]}")
+
+                # 清理响应文本 - 移除可能存在的 markdown 代码块标记
+                cleaned_response = response_text.strip()
+                if cleaned_response.startswith("```json"):
+                    cleaned_response = cleaned_response[7:]
+                elif cleaned_response.startswith("```"):
+                    cleaned_response = cleaned_response[3:]
+                if cleaned_response.endswith("```"):
+                    cleaned_response = cleaned_response[:-3]
+                cleaned_response = cleaned_response.strip()
+
+                # 尝试解析 JSON
+                try:
+                    parsed = json.loads(cleaned_response)
+                except json.JSONDecodeError as e:
+                    # 如果 JSON 解析失败，检查是否是单个值（如数字）
+                    cleaned_response_stripped = cleaned_response.strip()
+
+                    # 检查是否是单个数字（整数或浮点数）
+                    # 先尝试直接转换为数字
+                    try:
+                        num_value = float(cleaned_response_stripped)
+                        # 如果转换成功，说明是单个数字
+                        logger.warning(f"⚠️ API 返回了单个数值而非 JSON 对象: {cleaned_response_stripped}")
+                        if retry < max_parse_retries - 1:
+                            logger.info(f"🔄 重试第 {retry + 1} 次...")
+                            time.sleep(1)
+                            continue
+                        # 返回默认结构
+                        return {
+                            "dimension": "unknown",
+                            "dimension_name": "未知维度",
+                            "total_score": num_value,
+                            "max_score": 100,
+                            "error": "API 返回了单个数值而非 JSON 对象",
+                            "raw_value": num_value
+                        }
+                    except ValueError:
+                        # 不是数字，继续其他检查
+                        pass
+
+                    # 检查是否是单个字符串
+                    if not cleaned_response_stripped.startswith('{') and not cleaned_response_stripped.startswith('['):
+                        logger.warning(f"⚠️ API 返回了非 JSON 内容: {cleaned_response_stripped[:100]}")
+                        if retry < max_parse_retries - 1:
+                            logger.info(f"🔄 重试第 {retry + 1} 次...")
+                            time.sleep(1)
+                            continue
+                        return {
+                            "dimension": "unknown",
+                            "dimension_name": "未知维度",
+                            "total_score": 0,
+                            "max_score": 100,
+                            "error": f"API 返回了非 JSON 格式内容",
+                            "raw_value": cleaned_response_stripped
+                        }
+
+                    # 真正的 JSON 解析错误
+                    raise RuntimeError(f"解析模型 JSON 响应失败: {str(e)}\n原始响应: {response_text}\n清理后响应: {cleaned_response}")
+
+                # 处理 API 返回 list 的情况（提取第一个元素）
+                if isinstance(parsed, list):
+                    if len(parsed) > 0:
+                        if isinstance(parsed[0], dict):
+                            return parsed[0]
+                        else:
+                            logger.warning(f"⚠️ API 返回了列表，但第一个元素不是字典: {type(parsed[0])}")
+                            if retry < max_parse_retries - 1:
+                                logger.info(f"🔄 重试第 {retry + 1} 次...")
+                                time.sleep(1)
+                                continue
+                            return {"error": f"API 返回列表，但元素不是字典类型", "raw_value": parsed}
+                    else:
+                        logger.warning("⚠️ API 返回了空列表")
+                        if retry < max_parse_retries - 1:
+                            logger.info(f"🔄 重试第 {retry + 1} 次...")
+                            time.sleep(1)
+                            continue
+                        return {"error": "API 返回了空列表", "raw_value": parsed}
+
+                # 处理 API 返回其他类型的情况
+                if not isinstance(parsed, dict):
+                    logger.warning(f"⚠️ API 返回了非字典类型: {type(parsed).__name__}, 值: {parsed}")
+                    if retry < max_parse_retries - 1:
+                        logger.info(f"🔄 重试第 {retry + 1} 次...")
+                        time.sleep(1)
+                        continue
+                    return {"error": f"API 返回非字典类型: {type(parsed).__name__}", "raw_value": parsed}
+
+                # 成功返回字典
+                return parsed
+
+            except Exception as e:
+                if retry == max_parse_retries - 1:
+                    raise
+                logger.warning(f"⚠️ 处理响应时出错 (第 {retry + 1} 次尝试): {str(e)}")
+                time.sleep(1)
+
+        # 理论上不会到达这里
+        return {"error": "达到最大重试次数", "raw_value": None}
 
 
 # 便捷函数

@@ -43,7 +43,6 @@ from src.evaluator import ScriptEvaluator
 from src.report_generator import ReportGenerator
 from src.history_manager import HistoryManager
 from src.novel_generator import NovelGenerator
-from src.cover_generator import CoverGenerator
 from src.api_client import DoubaoAPIClient
 
 app = Flask(__name__)
@@ -59,7 +58,7 @@ os.makedirs(app.config['OUTPUT_FOLDER'], exist_ok=True)
 history_manager = HistoryManager()
 
 # 允许的文件扩展名
-ALLOWED_EXTENSIONS = {'txt'}
+ALLOWED_EXTENSIONS = {'txt', 'pdf', 'docx'}
 
 
 def allowed_file(filename):
@@ -121,10 +120,98 @@ def extract_text_from_pdf(file_path):
     return text.strip()
 
 
+def extract_text_from_docx(file_path):
+    """从 DOCX 文件中提取文本"""
+    try:
+        from docx import Document
+
+        doc = Document(file_path)
+        text_content = []
+        seen_cells = set()  # 用于去重表格单元格
+
+        logger.info("开始提取DOCX文件内容...")
+
+        # 提取段落文本（过滤空段落）
+        paragraph_count = 0
+        for paragraph in doc.paragraphs:
+            text = paragraph.text.strip()
+            if text:  # 只保留非空段落
+                text_content.append(text)
+                paragraph_count += 1
+
+        logger.info(f"提取了 {paragraph_count} 个非空段落")
+
+        # 提取表格文本（如果有的话）
+        table_cell_count = 0
+        for table in doc.tables:
+            for row in table.rows:
+                for cell in row.cells:
+                    cell_text = cell.text.strip()
+                    # 使用cell对象的id来去重（避免合并单元格重复）
+                    cell_id = id(cell)
+                    if cell_text and cell_id not in seen_cells:
+                        text_content.append(cell_text)
+                        seen_cells.add(cell_id)
+                        table_cell_count += 1
+
+        if table_cell_count > 0:
+            logger.info(f"提取了 {table_cell_count} 个表格单元格")
+
+        # 用双换行符连接，保持段落结构
+        text = '\n\n'.join(text_content)
+
+        raw_length = len(text)
+        logger.info(f"原始文本长度: {raw_length} 字符")
+
+        if raw_length < 50:
+            raise RuntimeError(f"DOCX 文本提取失败：提取的文本过短（{raw_length} 字符）。请检查文件是否为空或损坏。")
+
+        # 先进行基本清理
+        import re
+        logger.info("开始清理DOCX文本...")
+
+        # 移除DOCX特有的控制字符和不可见字符
+        text = re.sub(r'[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]', '', text)
+
+        # 移除零宽字符
+        text = re.sub(r'[\u200b-\u200d\u2060\uFEFF]', '', text)
+
+        # 移除多余的空白字符，但保留换行
+        text = re.sub(r'[ \t]+', ' ', text)  # 多个空格/制表符合并为一个
+        text = re.sub(r' +\n', '\n', text)  # 移除行尾空格
+
+        # 统一中英文标点
+        text = text.replace('．', '。').replace('，', ',').replace('．', '.')
+
+        logger.info(f"基本清理后文本长度: {len(text)} 字符")
+
+        # 再用完整的清理函数
+        text = clean_script_text(text)
+
+        final_length = len(text.strip())
+        logger.info(f"使用 python-docx 成功提取并清理文本，最终长度: {final_length} 字符")
+
+        # 输出前200字符用于调试
+        preview = text.strip()[:200]
+        logger.info(f"文本预览: {preview}...")
+
+        return text.strip()
+
+    except ImportError:
+        raise RuntimeError("缺少 python-docx 库。请运行: pip install python-docx")
+    except Exception as e:
+        logger.error(f"DOCX 文本提取失败: {str(e)}")
+        import traceback
+        logger.error(traceback.format_exc())
+        raise RuntimeError(f"无法解析 DOCX 文件。错误: {str(e)}")
+
+
 def extract_text_from_file(file_path, file_ext):
     """根据文件类型提取文本"""
     if file_ext == 'pdf':
         return extract_text_from_pdf(file_path)
+    elif file_ext == 'docx':
+        return extract_text_from_docx(file_path)
     else:
         # txt 文件读取，尝试多种编码
         text = None
@@ -144,7 +231,42 @@ def extract_text_from_file(file_path, file_ext):
 
         # 清理和规范化文本
         text = clean_script_text(text)
+
+        # 验证文本质量
+        text = validate_and_fix_text(text)
+
         return text
+
+
+def validate_and_fix_text(text: str) -> str:
+    """
+    验证和修复文本质量，确保可以正常处理
+
+    Args:
+        text: 原始文本
+
+    Returns:
+        验证和修复后的文本
+    """
+    import re
+
+    # 检查文本是否包含过多乱码字符
+    total_chars = len(text)
+    chinese_chars = len(re.findall(r'[\u4e00-\u9fff]', text))
+    english_chars = len(re.findall(r'[a-zA-Z]', text))
+    valid_chars = chinese_chars + english_chars
+
+    # 如果有效字符比例过低，可能是乱码
+    if total_chars > 100 and valid_chars / total_chars < 0.3:
+        logger.warning(f"文本质量检查: 有效字符比例 {valid_chars/total_chars:.2%}，可能存在乱码")
+        # 尝试更激进的清理
+        # 只保留中文、英文、数字和常用标点
+        text = re.sub(r'[^\u4e00-\u9fffa-zA-Z0-9\s\.,!?;:：，。！？；、()\[\]""''《》·—\-–—/]', '', text)
+        # 移除多余空白
+        text = re.sub(r'\s+', ' ', text)
+        logger.info("已应用激进清理模式，移除了可疑字符")
+
+    return text
 
 
 def clean_script_text(text: str) -> str:
@@ -282,7 +404,7 @@ def evaluate():
         if not allowed_file(file.filename):
             return jsonify({
                 'success': False,
-                'error': '只支持 .txt 格式的剧本文件'
+                'error': '只支持 .txt、.pdf、.docx 格式的剧本文件'
             }), 400
 
         # 获取选中的维度
