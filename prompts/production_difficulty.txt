@@ -1,0 +1,82 @@
+请评估以下剧本的制作难度。
+
+# 剧本内容
+{script_content}
+
+# 评估维度
+请从以下方面评估制作难度：
+
+1. **角色复杂度**
+   - 核心人物数量
+   - 重要配角数量
+   - 角色模型微调需求
+   - 人物外观一致性要求
+
+2. **场景复杂度**
+   - 场景数量和种类
+   - 场景资产复杂度
+   - 不同环境场景需求
+   - 场景转换难度
+
+3. **特效需求**
+   - 极端天气效果
+   - 战斗特效
+   - 破坏特效
+   - 血腥特效
+   - 氛围与动物特效
+
+4. **动作设计**
+   - 动作场面数量
+   - 动作复杂度
+   - 大场面数量（千军万马等）
+
+5. **整体难度评估**
+   - AI动漫制作复杂度
+   - 成本控制难度
+   - 制作周期预估
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "production_difficulty",
+  "dimension_name": "制作难度",
+  "difficulty_level": "低/中/高/极高",
+  "difficulty_score": 数值,
+  "analysis": {
+    "character_complexity": {
+      "main_characters": 数量,
+      "supporting_characters": 数量,
+      "complexity_assessment": "评估描述"
+    },
+    "scene_complexity": {
+      "scene_count": 数量,
+      "scene_types": "场景类型列表",
+      "complexity_assessment": "评估描述"
+    },
+    "effects_requirements": {
+      "weather_effects": "天气特效描述",
+      "combat_effects": "战斗特效描述",
+      "destruction_effects": "破坏特效描述",
+      "other_effects": "其他特效描述"
+    },
+    "action_design": {
+      "action_scenes": 数量,
+      "complexity_assessment": "复杂度评估"
+    }
+  },
+  "resource_breakdown": {
+    "roles": "角色列表",
+    "scenes": "场景列表",
+    "effects": "特效列表"
+  },
+  "cost_estimation": "成本预估（低/中/高）",
+  "production_recommendations": [
+    "制作建议1",
+    "制作建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出。

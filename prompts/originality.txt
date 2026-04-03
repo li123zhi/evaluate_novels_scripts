@@ -1,0 +1,73 @@
+请评估以下剧本的原创性。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估剧本原创性：
+
+1. **创意新颖度**
+   - 核心设定是否新颖
+   - 是否有独特视角
+   - 创意突破性
+
+2. **套路化程度**
+   - 是否过度使用常见套路
+   - 陈旧桥段识别
+   - 模板化痕迹
+
+3. **差异化程度**
+   - 与同类作品的区别
+   - 独特性表达
+   - 创新点识别
+
+4. **创新表达**
+   - 叙述方式的创新
+   - 结构创新
+   - 表现手法创新
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "originality",
+  "dimension_name": "原创性评分",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "creativity_assessment": {
+      "novelty_level": "新颖度评估",
+      "unique_perspective": "独特视角描述",
+      "breakthrough_points": ["创新点1", "创新点2"]
+    },
+    "cliché_analysis": [
+      {
+        "cliché": "套路描述",
+        "frequency": "常见程度",
+        "specific_location": "具体位置（集数/场景）"
+      }
+    ],
+    "differentiation": {
+      "market_comparison": "与市场同类作品对比",
+      "unique_elements": ["独特元素1", "独特元素2"],
+      "competitive_advantage": "竞争优势"
+    },
+    "innovative_expression": {
+      "narrative_innovation": "叙述创新评估",
+      "structural_innovation": "结构创新评估",
+      "technique_innovation": "手法创新评估"
+    }
+  },
+  "strengths": [
+    "原创性亮点1（附具体例证）",
+    "原创性亮点2（附具体例证）"
+  ],
+  "improvement_suggestions": [
+    "提升原创性建议1（附具体修改方案）",
+    "提升原创性建议2（附具体修改方案）"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数或场景作为例证。

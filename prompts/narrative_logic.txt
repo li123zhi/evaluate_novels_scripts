@@ -1,0 +1,84 @@
+请评估以下剧本的叙事逻辑。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估叙事逻辑：
+
+1. **剧情连贯性**
+   - 剧情发展是否流畅
+   - 前后呼应是否紧密
+   - 因果关系是否清晰
+
+2. **动机合理性**
+   - 人物行为动机是否充分
+   - 决策是否符合人物设定
+   - 行为逻辑是否自洽
+
+3. **情节自洽性**
+   - 是否存在逻辑硬伤
+   - 情节发展是否合理
+   - 细节是否前后矛盾
+
+4. **逻辑严密性**
+   - 剧情推演是否严密
+   - 转折是否有铺垫
+   - 伏笔回收是否完整
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "narrative_logic",
+  "dimension_name": "叙事逻辑",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "coherence_assessment": {
+      "narrative_flow": "叙事流畅度评估",
+      "consistency_check": "前后呼应检查",
+      "causality_clarity": "因果关系清晰度"
+    },
+    "motivation_rationality": [
+      {
+        "character": "角色名",
+        "behavior": "行为描述",
+        "motivation_assessment": "动机合理性评估",
+        "specific_location": "具体位置（集数）"
+      }
+    ],
+    "plot_consistency": {
+      "logic_flaws": [
+        {
+          "flaw": "逻辑问题描述",
+          "location": "具体位置（集数/场景）",
+          "severity": "严重程度（高/中/低）"
+        }
+      ],
+      "contradictions": "矛盾点分析",
+      "self_consistency": "自洽性评估"
+    },
+    "logical_rigor": {
+      "plot_progression": "剧情推演评估",
+      "transition_setup": "转折铺垫评估",
+      "foreshadowing_payoff": "伏笔回收评估"
+    }
+  },
+  "strengths": [
+    "逻辑优点1（附具体例证）",
+    "逻辑优点2（附具体例证）"
+  ],
+  "logic_issues": [
+    "逻辑问题1（附具体位置和改进建议）",
+    "逻辑问题2（附具体位置和改进建议）"
+  ],
+  "improvement_suggestions": [
+    "逻辑优化建议1",
+    "逻辑优化建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数或场景作为例证。

@@ -41,6 +41,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 
 from src.evaluator import ScriptEvaluator
 from src.report_generator import ReportGenerator
+from src.new_report_generator import NewReportGenerator
 from src.history_manager import HistoryManager
 from src.novel_generator import NovelGenerator
 from src.api_client import DoubaoAPIClient
@@ -464,7 +465,7 @@ def evaluate():
 
         # 生成报告
         logger.info("开始生成报告...")
-        report_generator = ReportGenerator(output_dir=app.config['OUTPUT_FOLDER'])
+        report_generator = NewReportGenerator(output_dir=app.config['OUTPUT_FOLDER'])
         result['script_name'] = original_filename  # 使用原始文件名
         logger.info(f"剧本名称: {result['script_name']}")
 
@@ -485,7 +486,7 @@ def evaluate():
                     logger.warning(f"跳过无法序列化的字段: {key}")
             result = result_clean
 
-        report_files = report_generator.generate(result, formats=['markdown', 'json', 'word', 'ppt'])
+        report_files = report_generator.generate(result, formats=['markdown', 'json', 'pdf'])
         logger.info(f"报告生成完成: {report_files}")
 
         # 获取报告文件名（用于下载）

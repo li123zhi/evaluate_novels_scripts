@@ -1,0 +1,165 @@
+# 剧本评测配置 - 基于PDF参考系统的评估维度体系
+# 短剧商业潜力评估报告 - 15个核心评测维度
+
+# 评测维度配置
+evaluation_dimensions:
+  # ==================== 基础信息维度 ====================
+  # 这些维度不参与综合评分计算，仅作为参考信息
+
+  ai_concentration:
+    name: "AI浓度分析"
+    weight: 0
+    description: "检测AI生成内容占比，评估创作风险"
+    prompt_file: "prompts/ai_concentration.txt"
+    is_basic_info: true
+
+  submission_match:
+    name: "收稿匹配度"
+    weight: 0
+    description: "剧本与市场需求的匹配程度"
+    prompt_file: "prompts/submission_match.txt"
+    is_basic_info: true
+
+  format_compliance:
+    name: "格式规范性"
+    weight: 0
+    description: "剧本格式是否符合短剧写作标准"
+    prompt_file: "prompts/format_compliance.txt"
+    is_basic_info: true
+
+  production_difficulty:
+    name: "制作难度"
+    weight: 0
+    description: "拍摄和制作的复杂度评估"
+    prompt_file: "prompts/production_difficulty.txt"
+    is_basic_info: true
+
+  # ==================== A. 市场共鸣与竞争定位 ====================
+  # 权重总计: 30%
+
+  target_audience:
+    name: "目标受众定位"
+    weight: 0.10
+    description: "目标受众精准度、痛点抓取能力、情感共鸣强度"
+    prompt_file: "prompts/target_audience.txt"
+    category: "市场共鸣与竞争定位"
+
+  originality:
+    name: "原创性评分"
+    weight: 0.08
+    description: "创意新颖度、差异化程度、创新突破性"
+    prompt_file: "prompts/originality.txt"
+    category: "市场共鸣与竞争定位"
+
+  market_fit:
+    name: "当下热播契合度"
+    weight: 0.12
+    description: "与爆款剧对标程度、市场热点匹配度、平台算法友好度"
+    prompt_file: "prompts/market_fit.txt"
+    category: "市场共鸣与竞争定位"
+
+  # ==================== B. 叙事与剧本基因 ====================
+  # 权重总计: 40%
+
+  narrative_logic:
+    name: "叙事逻辑"
+    weight: 0.05
+    description: "剧情连贯性、动机合理性、情节自洽性、逻辑严密性"
+    prompt_file: "prompts/narrative_logic.txt"
+    category: "叙事与剧本基因"
+
+  hook_strength:
+    name: "钩子强度"
+    weight: 0.06
+    description: "开篇冲击力、悬念设置、集末钩子、抓人能力"
+    prompt_file: "prompts/hook_strength.txt"
+    category: "叙事与剧本基因"
+
+  pleasure_design:
+    name: "爽点设计"
+    weight: 0.06
+    description: "爽点密度、打脸效果、情绪峰值、解气程度"
+    prompt_file: "prompts/pleasure_design.txt"
+    category: "叙事与剧本基因"
+
+  pacing_structure:
+    name: "节奏与结构"
+    weight: 0.05
+    description: "节奏紧凑度、起承转合、结构完整性、无注水内容"
+    prompt_file: "prompts/pacing_structure.txt"
+    category: "叙事与剧本基因"
+
+  narrative_coherence:
+    name: "主线连贯性"
+    weight: 0.05
+    description: "主线清晰度、支线关联、剧情流畅性、过渡自然度"
+    prompt_file: "prompts/narrative_coherence.txt"
+    category: "叙事与剧本基因"
+
+  character_development:
+    name: "人物塑造"
+    weight: 0.05
+    description: "人物立体度、性格层次、成长弧光、记忆点强度"
+    prompt_file: "prompts/character_development.txt"
+    category: "叙事与剧本基因"
+
+  dialogue_quality:
+    name: "对话质量"
+    weight: 0.04
+    description: "台词精彩度、潜台词、自然度、金句密度"
+    prompt_file: "prompts/dialogue_quality.txt"
+    category: "叙事与剧本基因"
+
+  suspense_effectiveness:
+    name: "悬念有效性"
+    weight: 0.04
+    description: "悬念设置、扣人心弦、期待感制造、反转效果"
+    prompt_file: "prompts/suspense_effectiveness.txt"
+    category: "叙事与剧本基因"
+
+  # ==================== C. 商业化潜力 ====================
+  # 权重总计: 18%
+
+  user_retention:
+    name: "用户粘性"
+    weight: 0.09
+    description: "完播率预测、持续观看动力、弃剧风险点、情绪闭环"
+    prompt_file: "prompts/user_retention.txt"
+    category: "商业化潜力"
+
+  viral_potential:
+    name: "传播潜力"
+    weight: 0.09
+    description: "话题传播力、二创友好度、社交货币属性、讨论度"
+    prompt_file: "prompts/viral_potential.txt"
+    category: "商业化潜力"
+
+  # ==================== D. 合规性评估 ====================
+  # 权重总计: 12%
+
+  content_compliance:
+    name: "内容合规性"
+    weight: 0.06
+    description: "内容安全性、审核风险、平台规范符合度、无违规内容"
+    prompt_file: "prompts/content_compliance.txt"
+    category: "合规性评估"
+
+  value_orientation:
+    name: "价值观导向"
+    weight: 0.06
+    description: "价值导向正确性、正能量传递、社会意义、价值观风险"
+    prompt_file: "prompts/value_orientation.txt"
+    category: "合规性评估"
+
+# 输出配置
+output:
+  format: ["markdown", "json", "word", "ppt"]
+  directory: "outputs"
+  include_detailed_analysis: true
+  include_suggestions: true
+
+# 剧本处理配置
+script:
+  max_length: 200000
+  chunk_size: 10000
+  encoding: "utf-8"

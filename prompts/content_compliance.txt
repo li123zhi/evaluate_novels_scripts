@@ -1,0 +1,89 @@
+请评估以下剧本的内容合规性。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估内容合规性：
+
+1. **极端内容呈现**
+   - 过度暴力
+   - 血腥场面
+   - 残酷描写
+
+2. **审核风险点**
+   - 平台规范违反
+   - 禁止内容
+   - 敏感元素
+
+3. **画面表现风险**
+   - 视觉呈现风险
+   - 隐喻化需求
+   - 侧面交代空间
+
+4. **平台适配性**
+   - 平台审核标准
+   - 过审可能性
+   - 限流风险
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "content_compliance",
+  "dimension_name": "内容合规性",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "extreme_content_review": [
+      {
+        "content_type": "极端内容类型",
+        "location": "具体位置（集数/场景）",
+        "severity": "严重程度（高/中/低）",
+        "risk_level": "风险等级",
+        "specific_description": "具体问题描述"
+      }
+    ],
+    "censorship_risks": [
+      {
+        "risk_type": "风险类型",
+        "location": "具体位置",
+        "platform_standard": "相关平台规范",
+        "violation_level": "违规程度"
+      }
+    ],
+    "visual_presentation_risks": [
+      {
+        "risk_scene": "风险场景描述",
+        "location": "具体位置",
+        "visualization_risk": "视觉呈现风险等级",
+        "metaphor_opportunity": "隐喻化处理建议"
+      }
+    ],
+    "platform_compatibility": {
+      "review_standards": "平台审核标准评估",
+      "approval_probability": "过审可能性评估",
+      "restriction_risk": "限流风险等级"
+    }
+  },
+  "compliance_strengths": [
+    "合规优点1（附具体例证）",
+    "合规优点2（附具体例证）"
+  ],
+  "risk_warnings": [
+    "合规风险1（附具体位置和规避方案）",
+    "合规风险2（附具体位置和规避方案）"
+  ],
+  "modification_suggestions": [
+    "内容修改建议1",
+    "内容修改建议2"
+  ],
+  "overall_risk_assessment": {
+    "risk_level": "整体风险等级",
+    "approval_confidence": "过审置信度"
+  },
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数、场景或描写内容作为例证。

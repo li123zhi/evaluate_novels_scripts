@@ -1,0 +1,52 @@
+请分析以下剧本的AI浓度（AI生成内容占比）。
+
+# 剧本内容
+{script_content}
+
+# 分析要求
+请从以下几个维度分析AI浓度：
+
+1. **整体AI浓度检测**
+   - 检测文本中AI生成内容的占比
+   - 判定创作类型（纯人工创作/AI辅助/AI主导）
+   - 评估商业风险
+
+2. **段落分析**
+   - 分析不同字数区间的AI率变化
+   - 识别AI浓度突增的段落
+   - 推测AI使用场景
+
+3. **质量评估**
+   - 大纲设定与主线质量
+   - 人物动机连贯性
+   - 情绪爽点扎实程度
+
+4. **建议与结论**
+   - 是否需要人工校验
+   - 哪些部分需要重点检查
+   - 对剧本整体质量的影响
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "ai_concentration",
+  "dimension_name": "AI浓度分析",
+  "ai_percentage": 数值,
+  "creation_type": "纯人工创作/AI辅助/AI主导",
+  "risk_level": "极低/低/中/高",
+  "analysis": {
+    "overall_assessment": "整体评估描述",
+    "segment_analysis": "各段落AI浓度分析",
+    "quality_impact": "对质量的影响",
+    "data_characteristics": "数据特征描述"
+  },
+  "recommendations": [
+    "建议1",
+    "建议2"
+  ],
+  "total_score": 100,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，确保所有字段完整。

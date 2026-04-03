@@ -1,0 +1,84 @@
+请评估以下剧本的人物塑造。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估人物塑造：
+
+1. **人物立体度**
+   - 人物性格层次
+   - 人物复杂度
+   - 扁平化问题
+
+2. **性格层次**
+   - 人物性格多样性
+   - 性格一致性
+   - 性格转变合理性
+
+3. **成长弧光**
+   - 人物成长轨迹
+   - 成长转折点
+   - 微型弧光设计
+
+4. **记忆点强度**
+   - 人物特征鲜明度
+   - 独特标签
+   - 识别度
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "character_development",
+  "dimension_name": "人物塑造",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "character_dimensionality": [
+      {
+        "character": "角色名",
+        "role": "角色定位",
+        "complexity": "复杂度评估",
+        "flatness_issue": "扁平化问题分析（如有）"
+      }
+    ],
+    "personality_layers": [
+      {
+        "character": "角色名",
+        "traits": ["性格特征1", "性格特征2"],
+        "consistency": "性格一致性评估",
+        "transformation_rationality": "性格转变合理性"
+      }
+    ],
+    "growth_arcs": [
+      {
+        "character": "角色名",
+        "arc_description": "成长轨迹描述",
+        "turning_points": ["转折点1", "转折点2"],
+        "arc_quality": "弧光质量评估"
+      }
+    ],
+    "memorability": {
+      "distinctive_features": ["独特特征1", "独特特征2"],
+      "character_tags": ["人物标签1", "人物标签2"],
+      "recognition_level": "识别度等级"
+    }
+  },
+  "strengths": [
+    "人物塑造优点1（附具体角色和例证）",
+    "人物塑造优点2（附具体角色和例证）"
+  ],
+  "weaknesses": [
+    "人物塑造问题1（附具体角色和改进方案）",
+    "人物塑造问题2（附具体角色和改进方案）"
+  ],
+  "enhancement_suggestions": [
+    "人物增强建议1",
+    "人物增强建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体角色、集数或场景作为例证。

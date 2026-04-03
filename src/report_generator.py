@@ -234,14 +234,18 @@ class ReportGenerator:
                     if "target_audience" in dim_result:
                         audience = dim_result["target_audience"]
                         f.write("#### 目标受众\n\n")
-                        if audience.get("primary"):
-                            f.write(f"- **主要受众**: {', '.join(audience['primary'])}\n")
-                        if audience.get("age_range"):
-                            f.write(f"- **年龄范围**: {audience['age_range']}\n")
-                        if audience.get("gender_preference"):
-                            f.write(f"- **性别偏好**: {audience['gender_preference']}\n")
-                        if audience.get("interest_tags"):
-                            f.write(f"- **兴趣标签**: {', '.join(audience['interest_tags'])}\n")
+                        # 兼容处理：audience可能是字典或字符串
+                        if isinstance(audience, dict):
+                            if audience.get("primary"):
+                                f.write(f"- **主要受众**: {', '.join(audience['primary'])}\n")
+                            if audience.get("age_range"):
+                                f.write(f"- **年龄范围**: {audience['age_range']}\n")
+                            if audience.get("gender_preference"):
+                                f.write(f"- **性别偏好**: {audience['gender_preference']}\n")
+                            if audience.get("interest_tags"):
+                                f.write(f"- **兴趣标签**: {', '.join(audience['interest_tags'])}\n")
+                        elif isinstance(audience, str):
+                            f.write(f"- **目标受众**: {audience}\n")
                         f.write("\n")
 
                     # 每个维度后添加分隔线

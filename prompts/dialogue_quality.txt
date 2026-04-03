@@ -1,0 +1,81 @@
+请评估以下剧本的对话质量。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估对话质量：
+
+1. **台词精彩度**
+   - 台词吸引力
+   - 台词爆发力
+   - 台词感染力
+
+2. **潜台词**
+   - 台词含蓄度
+   - 言外之意
+   - 话里有话技巧
+
+3. **自然度**
+   - 对话自然程度
+   - 口语化程度
+   - 对话流畅度
+
+4. **金句密度**
+   - 金句数量
+   - 传播潜力
+   - 记忆点强度
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "dialogue_quality",
+  "dimension_name": "对话质量",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "line_brilliance": {
+      "appeal": "台词吸引力评估",
+      "impact": "台词爆发力评估",
+      "infectiousness": "台词感染力评估"
+    },
+    "subtext_assessment": [
+      {
+        "dialogue_example": "对话示例",
+        "location": "具体位置（集数/场景）",
+        "subtext_quality": "潜台词质量",
+        "depth_level": "深度等级"
+      }
+    ],
+    "naturalness": {
+      "colloquial_level": "口语化程度",
+      "conversational_flow": "对话流畅度",
+      "artificial_issues": "不自然问题识别（如有）"
+    },
+    "golden_lines": [
+      {
+        "line": "金句内容",
+        "location": "具体位置",
+        "viral_potential": "传播潜力等级",
+        "memorability": "记忆点强度"
+      }
+    ]
+  },
+  "highlights": [
+    "精彩对话1（附具体对话内容和位置）",
+    "精彩对话2（附具体对话内容和位置）"
+  ],
+  "issues": [
+    "对话问题1（附具体位置和改进方案）",
+    "对话问题2（附具体位置和改进方案）"
+  ],
+  "dialogue_optimization": [
+    "对话优化建议1",
+    "对话优化建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体对话内容和位置。

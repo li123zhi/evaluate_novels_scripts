@@ -1,0 +1,83 @@
+请评估以下剧本的爽点设计。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估爽点设计：
+
+1. **爽点密度**
+   - 爽点出现频率
+   - 爽点分布均匀度
+   - 爽点间隔合理性
+
+2. **打脸效果**
+   - 打脸场景设计
+   - 打脸节奏
+   - 打脸层次感
+
+3. **情绪峰值**
+   - 情绪高潮强度
+   - 情绪宣泄体验
+   - 解气程度
+
+4. **爽点类型**
+   - 经济制裁爽感
+   - 名誉毁灭爽感
+   - 权力反转爽感
+   - 情感高潮爽感
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "pleasure_design",
+  "dimension_name": "爽点设计",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "pleasure_density": {
+      "frequency": "爽点频率",
+      "distribution": "分布评估",
+      "interval_rationality": "间隔合理性"
+    },
+    "slap_in_face_effects": [
+      {
+        "type": "打脸类型",
+        "location": "具体位置（集数/场景）",
+        "effectiveness": "有效性评估",
+        "satisfaction_level": "爽感等级"
+      }
+    ],
+    "emotional_peaks": [
+      {
+        "peak_type": "情绪峰值类型",
+        "location": "具体位置",
+        "intensity": "强度等级",
+        "catharsis_quality": "宣泄质量"
+      }
+    ],
+    "pleasure_variety": {
+      "economic_sanctions": "经济制裁爽感评估",
+      "reputation_destruction": "名誉毁灭爽感评估",
+      "power_reversal": "权力反转爽感评估",
+      "emotional_climax": "情感高潮爽感评估"
+    }
+  },
+  "highlights": [
+    "精彩爽点1（附具体集数/场景描述）",
+    "精彩爽点2（附具体集数/场景描述）"
+  ],
+  "improvement_areas": [
+    "可优化爽点1（附具体改进方案）",
+    "可优化爽点2（附具体改进方案）"
+  ],
+  "enhancement_suggestions": [
+    "爽点增强建议1",
+    "爽点增强建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数或场景作为例证。

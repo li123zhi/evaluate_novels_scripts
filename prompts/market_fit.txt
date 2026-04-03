@@ -1,0 +1,74 @@
+请评估以下剧本与当下热播内容的契合度。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估市场契合度：
+
+1. **爆款对标分析**
+   - 与当前爆款剧的相似度
+   - 爆款元素匹配程度
+   - 爆款模式运用
+
+2. **市场热点匹配**
+   - 当前热门题材契合度
+   - 市场趋势把握
+   - 热点话题关联
+
+3. **平台算法友好度**
+   - 平台推荐机制适配性
+   - 流量获取潜力
+   - 算法友好元素
+
+4. **受众需求匹配**
+   - 当前受众偏好匹配
+   - 市场需求满足度
+   - 市场时机把握
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "market_fit",
+  "dimension_name": "当下热播契合度",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "viral_comparison": [
+      {
+        "reference_work": "参考爆款作品名称",
+        "similarity": "相似度描述",
+        "matching_elements": ["匹配元素1", "匹配元素2"],
+        "specific_examples": "具体对标例证（集数/场景）"
+      }
+    ],
+    "market_trends": {
+      "current_hot_genres": "当前热门题材",
+      "trend_alignment": "趋势契合度评估",
+      "timing_assessment": "市场时机评估"
+    },
+    "algorithm_friendliness": {
+      "recommendation_potential": "推荐潜力评估",
+      "viral_elements": ["爆款元素1", "爆款元素2"],
+      "engagement_factors": ["参与度因素1", "参与度因素2"]
+    },
+    "audience_demand_match": {
+      "preference_alignment": "受众偏好匹配度",
+      "market_gap": "市场空白点",
+      "demand_satisfaction": "需求满足程度"
+    }
+  },
+  "strengths": [
+    "市场契合优势1（附具体例证）",
+    "市场契合优势2（附具体例证）"
+  ],
+  "market_opportunities": [
+    "市场机会1",
+    "市场机会2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数或场景以及可对标的爆款作品名称。

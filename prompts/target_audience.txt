@@ -1,0 +1,70 @@
+请评估以下剧本的目标受众定位精准度。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估目标受众定位：
+
+1. **目标受众识别**
+   - 目标受众群体是否清晰
+   - 受众画像是否准确
+   - 年龄段、性别、兴趣标签
+
+2. **痛点抓取能力**
+   - 是否精准击中目标受众的核心痛点
+   - 痛点是否具有普遍性
+   - 情感共鸣强度
+
+3. **情感满足度**
+   - 是否满足受众的情感需求
+   - 情感宣泄体验
+   - 代入感强度
+
+4. **市场定位准确性**
+   - 受众定位与内容匹配度
+   - 市场空白点把握
+   - 差异化定位
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "target_audience",
+  "dimension_name": "目标受众定位",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "target_audience_profile": {
+      "demographics": "人群特征",
+      "age_range": "年龄范围",
+      "gender": "性别倾向",
+      "interests": "兴趣标签"
+    },
+    "pain_points_capture": [
+      {
+        "pain_point": "痛点描述",
+        "relevance": "相关性分析",
+        "resonance_strength": "共鸣强度（高/中/低）"
+      }
+    ],
+    "emotional_satisfaction": {
+      "emotional_needs_met": ["情感需求1", "情感需求2"],
+      "catharsis_quality": "情感宣泄质量评估",
+      "immersion_level": "代入感强度"
+    },
+    "positioning_accuracy": "市场定位准确性评估"
+  },
+  "strengths": [
+    "优点1（附具体集数或场景说明）",
+    "优点2（附具体集数或场景说明）"
+  ],
+  "improvement_areas": [
+    "可打磨点1（附具体改进建议）",
+    "可打磨点2（附具体改进建议）"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数或场景作为例证。

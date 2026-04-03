@@ -1,0 +1,55 @@
+请评估以下剧本的收稿匹配度（与市场需求的匹配程度）。
+
+# 剧本内容
+{script_content}
+
+# 分析要求
+请从以下几个维度评估收稿匹配度：
+
+1. **题材匹配度**
+   - 题材类型是否热门
+   - 与当前市场需求的契合度
+   - 目标平台适配性
+
+2. **受众匹配度**
+   - 目标受众群体清晰度
+   - 受众需求满足程度
+   - 市场空白点定位
+
+3. **内容特征**
+   - 题材创新性与市场接受度的平衡
+   - 商业价值与艺术性的结合
+   - 投资回报潜力
+
+4. **市场定位**
+   - 与同类作品的差异化
+   - 市场竞争态势
+   - 爆款潜质
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "submission_match",
+  "dimension_name": "收稿匹配度",
+  "match_level": "完美匹配/匹配良好/一般/不匹配",
+  "match_score": 数值,
+  "analysis": {
+    "genre_match": "题材匹配度分析",
+    "audience_match": "受众匹配度分析",
+    "market_positioning": "市场定位分析",
+    "competitive_advantage": "竞争优势分析"
+  },
+  "target_audience": "目标受众描述",
+  "market_potential": "市场潜力评估",
+  "recommendations": [
+    "建议1",
+    "建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+如果信息不足无法评估，请在analysis中说明缺失的信息类型。
+
+请严格按照JSON格式输出。

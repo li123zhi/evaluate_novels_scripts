@@ -1,0 +1,80 @@
+请评估以下剧本的节奏与结构。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估节奏与结构：
+
+1. **节奏紧凑度**
+   - 节奏明快程度
+   - 无拖沓注水
+   - 节奏波动合理性
+
+2. **起承转合**
+   - 开篇破局能力
+   - 中段推进流畅度
+   - 高潮设置质量
+   - 结局收束力度
+
+3. **结构完整性**
+   - 整体框架完整性
+   - 段落比例协调性
+   - 首尾呼应程度
+
+4. **双线交织**
+   - 多线叙事能力
+   - 线索交织流畅度
+   - 主次线配合度
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "pacing_structure",
+  "dimension_name": "节奏与结构",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "pacing_assessment": {
+      "tempo": "节奏明快度",
+      "no_fillers": "无注水内容评估",
+      "rhythm_variance": "节奏波动合理性"
+    },
+    "structure_evaluation": {
+      "opening": "开篇破局评估",
+      "development": "中段推进评估",
+      "climax": "高潮设置评估",
+      "resolution": "结局收束评估"
+    },
+    "narrative_arcs": [
+      {
+        "arc_type": "故事线类型",
+        "episodes": "涉及集数",
+        "cohesion": "连贯性评估",
+        "transition_quality": "过渡质量"
+      }
+    ],
+    "structural_completeness": {
+      "framework_integrity": "框架完整性",
+      "proportion_harmony": "段落协调性",
+      "echo_effect": "首尾呼应效果"
+    }
+  },
+  "strengths": [
+    "节奏结构优点1（附具体例证）",
+    "节奏结构优点2（附具体例证）"
+  ],
+  "issues": [
+    "节奏结构问题1（附具体位置和建议）",
+    "节奏结构问题2（附具体位置和建议）"
+  ],
+  "optimization_suggestions": [
+    "结构优化建议1",
+    "结构优化建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数或场景作为例证。

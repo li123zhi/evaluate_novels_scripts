@@ -1,0 +1,84 @@
+请评估以下剧本的悬念有效性。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估悬念有效性：
+
+1. **悬念设置**
+   - 悬念类型
+   - 悬念设计技巧
+   - 悬念创新性
+
+2. **扣人心弦**
+   - 悬念紧张度
+   - 悬念持续度
+   - 悬念吸引力
+
+3. **期待制造**
+   - 对后续剧情的期待
+   - 对人物命运的期待
+   - 对谜底揭晓的期待
+
+4. **反转效果**
+   - 反转出人意料程度
+   - 反转合理性
+   - 反转冲击力
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "suspense_effectiveness",
+  "dimension_name": "悬念有效性",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "suspense_setup": [
+      {
+        "suspense_type": "悬念类型",
+        "location": "具体位置（集数/场景）",
+        "design_technique": "设计技巧",
+        "novelty": "新颖度评估"
+      }
+    ],
+    "engagement_level": {
+      "tension": "紧张度评估",
+      "sustainability": "持续度评估",
+      "attraction": "吸引力评估"
+    },
+    "anticipation_building": [
+      {
+        "anticipation_type": "期待类型",
+        "location": "具体位置",
+        "intensity": "强度等级",
+        "motivation": "追看动力描述"
+      }
+    ],
+    "plot_twists": [
+      {
+        "twist_location": "反转位置",
+        "unexpectedness": "出人意料等级",
+        "rationality": "合理性评估",
+        "impact": "冲击力评估"
+      }
+    ]
+  },
+  "strengths": [
+    "悬念亮点1（附具体位置和描述）",
+    "悬念亮点2（附具体位置和描述）"
+  ],
+  "weak_suspense": [
+    "较弱悬念1（附具体位置和增强建议）",
+    "较弱悬念2（附具体位置和增强建议）"
+  ],
+  "enhancement_suggestions": [
+    "悬念增强建议1",
+    "悬念增强建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数或场景作为例证。

@@ -1,199 +1,165 @@
-# 剧本评测配置
-# 全维度评测体系 - 包含所有29个评测维度
+# 剧本评测配置 - 基于PDF参考系统的评估维度体系
+# 短剧商业潜力评估报告 - 15个核心评测维度
 
-# 评测维度配置（总计100%）
+# 评测维度配置
 evaluation_dimensions:
-  # === 核心关键维度（权重较高）===
+  # ==================== 基础信息维度 ====================
+  # 这些维度不参与综合评分计算，仅作为参考信息
 
-  golden_3_seconds:
-    name: "黄金3秒"
+  ai_concentration:
+    name: "AI浓度分析"
+    weight: 0
+    description: "检测AI生成内容占比，评估创作风险"
+    prompt_file: "prompts/ai_concentration.txt"
+    is_basic_info: true
+
+  submission_match:
+    name: "收稿匹配度"
+    weight: 0
+    description: "剧本与市场需求的匹配程度"
+    prompt_file: "prompts/submission_match.txt"
+    is_basic_info: true
+
+  format_compliance:
+    name: "格式规范性"
+    weight: 0
+    description: "剧本格式是否符合短剧写作标准"
+    prompt_file: "prompts/format_compliance.txt"
+    is_basic_info: true
+
+  production_difficulty:
+    name: "制作难度"
+    weight: 0
+    description: "拍摄和制作的复杂度评估"
+    prompt_file: "prompts/production_difficulty.txt"
+    is_basic_info: true
+
+  # ==================== A. 市场共鸣与竞争定位 ====================
+  # 权重总计: 30%
+
+  target_audience:
+    name: "目标受众定位"
+    weight: 0.10
+    description: "目标受众精准度、痛点抓取能力、情感共鸣强度"
+    prompt_file: "prompts/target_audience.txt"
+    category: "市场共鸣与竞争定位"
+
+  originality:
+    name: "原创性评分"
+    weight: 0.08
+    description: "创意新颖度、差异化程度、创新突破性"
+    prompt_file: "prompts/originality.txt"
+    category: "市场共鸣与竞争定位"
+
+  market_fit:
+    name: "当下热播契合度"
+    weight: 0.12
+    description: "与爆款剧对标程度、市场热点匹配度、平台算法友好度"
+    prompt_file: "prompts/market_fit.txt"
+    category: "市场共鸣与竞争定位"
+
+  # ==================== B. 叙事与剧本基因 ====================
+  # 权重总计: 40%
+
+  narrative_logic:
+    name: "叙事逻辑"
+    weight: 0.05
+    description: "剧情连贯性、动机合理性、情节自洽性、逻辑严密性"
+    prompt_file: "prompts/narrative_logic.txt"
+    category: "叙事与剧本基因"
+
+  hook_strength:
+    name: "钩子强度"
     weight: 0.06
-    description: "第1秒冲击力、开篇冲突、悬念设置、视觉钩子"
-    prompt_file: "prompts/golden_3_seconds.txt"
+    description: "开篇冲击力、悬念设置、集末钩子、抓人能力"
+    prompt_file: "prompts/hook_strength.txt"
+    category: "叙事与剧本基因"
 
-  emotional_value:
-    name: "情绪价值密度"
+  pleasure_design:
+    name: "爽点设计"
     weight: 0.06
-    description: "爽点密度、甜虐拉扯、情绪峰值、代入感强度"
-    prompt_file: "prompts/emotional_value.txt"
+    description: "爽点密度、打脸效果、情绪峰值、解气程度"
+    prompt_file: "prompts/pleasure_design.txt"
+    category: "叙事与剧本基因"
 
-  pacing_twists:
-    name: "节奏与反转"
+  pacing_structure:
+    name: "节奏与结构"
     weight: 0.05
-    description: "反转间隔、反转出人意料、节奏紧凑度、无注水内容"
-    prompt_file: "prompts/pacing_twists.txt"
+    description: "节奏紧凑度、起承转合、结构完整性、无注水内容"
+    prompt_file: "prompts/pacing_structure.txt"
+    category: "叙事与剧本基因"
 
-  viral_potential:
-    name: "话题传播力"
+  narrative_coherence:
+    name: "主线连贯性"
     weight: 0.05
-    description: "梗点密度、金句数量、讨论度、二创友好度"
-    prompt_file: "prompts/viral_potential.txt"
+    description: "主线清晰度、支线关联、剧情流畅性、过渡自然度"
+    prompt_file: "prompts/narrative_coherence.txt"
+    category: "叙事与剧本基因"
 
-  completion_rate:
-    name: "完播率预测"
-    weight: 0.05
-    description: "钩子设置、弃剧风险点、节奏波动、观众持续观看动力"
-    prompt_file: "prompts/completion_rate.txt"
-
-  dialogue_characters:
-    name: "对话与人物"
-    weight: 0.05
-    description: "台词精彩度、潜台词、人物立体度、对话推动剧情"
-    prompt_file: "prompts/dialogue_characters.txt"
-
-  visual_presentation:
-    name: "视觉呈现"
-    weight: 0.04
-    description: "画面感、镜头语言、场景转换、视觉冲击、拍摄可行性"
-    prompt_file: "prompts/visual_presentation.txt"
-
-  story_logic:
-    name: "故事逻辑"
-    weight: 0.04
-    description: "剧情连贯性、动机合理性、情节自洽、无逻辑硬伤"
-    prompt_file: "prompts/story_logic.txt"
-
-  # === 扩展评测维度 ===
-
-  drama_traits:
-    name: "戏剧特征"
-    weight: 0.04
-    description: "戏剧冲突强度、矛盾张力、情节起伏、高潮设置"
-    prompt_file: "prompts/drama_traits.txt"
-
-  commercial:
-    name: "商业价值"
-    weight: 0.04
-    description: "变现潜力、受众广度、付费意愿、IP延伸价值"
-    prompt_file: "prompts/commercial.txt"
-
-  emotional:
-    name: "情感表达"
-    weight: 0.04
-    description: "情感层次、情绪传递、观众共鸣、情感真实度"
-    prompt_file: "prompts/emotional.txt"
-
-  structure:
-    name: "结构设计"
-    weight: 0.04
-    description: "叙事结构、起承转合、情节节奏、故事框架"
-    prompt_file: "prompts/structure.txt"
-
-  characters:
+  character_development:
     name: "人物塑造"
-    weight: 0.04
-    description: "人物性格、人物成长、人物关系、人物记忆点"
-    prompt_file: "prompts/characters.txt"
+    weight: 0.05
+    description: "人物立体度、性格层次、成长弧光、记忆点强度"
+    prompt_file: "prompts/character_development.txt"
+    category: "叙事与剧本基因"
 
-  dialogue:
+  dialogue_quality:
     name: "对话质量"
     weight: 0.04
-    description: "台词自然度、对话特色、潜台词、对白推动"
-    prompt_file: "prompts/dialogue.txt"
+    description: "台词精彩度、潜台词、自然度、金句密度"
+    prompt_file: "prompts/dialogue_quality.txt"
+    category: "叙事与剧本基因"
 
-  visual:
-    name: "视觉效果"
-    weight: 0.03
-    description: "视觉冲击、画面描述、镜头感、视觉连贯性"
-    prompt_file: "prompts/visual.txt"
+  suspense_effectiveness:
+    name: "悬念有效性"
+    weight: 0.04
+    description: "悬念设置、扣人心弦、期待感制造、反转效果"
+    prompt_file: "prompts/suspense_effectiveness.txt"
+    category: "叙事与剧本基因"
 
-  # === 专业细分维度 ===
+  # ==================== C. 商业化潜力 ====================
+  # 权重总计: 18%
 
-  innovation:
-    name: "创新性"
-    weight: 0.03
-    description: "创意新颖度、突破性、独特视角、创新表达"
-    prompt_file: "prompts/innovation.txt"
+  user_retention:
+    name: "用户粘性"
+    weight: 0.09
+    description: "完播率预测、持续观看动力、弃剧风险点、情绪闭环"
+    prompt_file: "prompts/user_retention.txt"
+    category: "商业化潜力"
 
-  social_currency:
-    name: "社交货币"
-    weight: 0.03
-    description: "分享价值、谈资价值、身份认同、社交话题性"
-    prompt_file: "prompts/social_currency.txt"
+  viral_potential:
+    name: "传播潜力"
+    weight: 0.09
+    description: "话题传播力、二创友好度、社交货币属性、讨论度"
+    prompt_file: "prompts/viral_potential.txt"
+    category: "商业化潜力"
 
-  douyin_viral:
-    name: "抖音爆款特征"
-    weight: 0.03
-    description: "平台适配度、算法友好度、爆款元素匹配"
-    prompt_file: "prompts/douyin_viral.txt"
+  # ==================== D. 合规性评估 ====================
+  # 权重总计: 12%
 
-  visual_storytelling:
-    name: "视觉叙事"
-    weight: 0.03
-    description: "画面叙事能力、视觉语言、镜头调度、场景设计"
-    prompt_file: "prompts/visual_storytelling.txt"
+  content_compliance:
+    name: "内容合规性"
+    weight: 0.06
+    description: "内容安全性、审核风险、平台规范符合度、无违规内容"
+    prompt_file: "prompts/content_compliance.txt"
+    category: "合规性评估"
 
-  character_design:
-    name: "人物设计"
-    weight: 0.03
-    description: "人物造型、人物设定、人物差异化、人物魅力"
-    prompt_file: "prompts/character_design.txt"
-
-  pacing_storyboard:
-    name: "节奏与分镜"
-    weight: 0.03
-    description: "节奏设计、分镜规划、镜头节奏、视觉节奏"
-    prompt_file: "prompts/pacing_storyboard.txt"
-
-  # === 风险与保障维度 ===
-
-  feasibility:
-    name: "制作可行性"
-    weight: 0.03
-    description: "拍摄难度、成本控制、场景数量、服装道具复杂度"
-    prompt_file: "prompts/feasibility.txt"
-
-  compliance_risk:
-    name: "合规与风险"
-    weight: 0.03
-    description: "内容合规性、价值观导向、舆情风险、平台审核风险"
-    prompt_file: "prompts/compliance_risk.txt"
-
-  ai_quality:
-    name: "AI质量评估"
-    weight: 0.02
-    description: "AI生成质量、内容逻辑性、输出稳定性"
-    prompt_file: "prompts/ai_quality.txt"
-
-  ip_potential:
-    name: "IP潜力"
-    weight: 0.02
-    description: "IP延展性、系列化潜力、品牌价值、授权价值"
-    prompt_file: "prompts/ip_potential.txt"
-
-  risk_warning:
-    name: "风险预警"
-    weight: 0.02
-    description: "潜在风险点、敏感内容、舆情风险、审核风险"
-    prompt_file: "prompts/risk_warning.txt"
-
-  market_validation:
-    name: "市场验证"
-    weight: 0.02
-    description: "市场对标、竞品分析、受众匹配度、市场机会"
-    prompt_file: "prompts/market_validation.txt"
-
-  values:
-    name: "价值观评估"
-    weight: 0.02
-    description: "价值导向、社会意义、正能量传递、价值观正确性"
-    prompt_file: "prompts/values.txt"
-
-  viral_script_standard:
-    name: "爆款剧本标准"
-    weight: 0.02
-    description: "爆款元素、传播要素、流量密码、爆款基因"
-    prompt_file: "prompts/viral_script_standard.txt"
+  value_orientation:
+    name: "价值观导向"
+    weight: 0.06
+    description: "价值导向正确性、正能量传递、社会意义、价值观风险"
+    prompt_file: "prompts/value_orientation.txt"
+    category: "合规性评估"
 
 # 输出配置
 output:
-  format: ["markdown", "json", "word", "ppt"]  # 支持的输出格式
+  format: ["markdown", "json", "word", "ppt"]
   directory: "outputs"
   include_detailed_analysis: true
   include_suggestions: true
 
 # 剧本处理配置
 script:
-  max_length: 200000  # 最大字符数（20万）
-  chunk_size: 10000  # 分段大小（用于长剧本）
+  max_length: 200000
+  chunk_size: 10000
   encoding: "utf-8"

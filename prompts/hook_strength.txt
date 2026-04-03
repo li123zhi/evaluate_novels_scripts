@@ -1,0 +1,81 @@
+请评估以下剧本的钩子强度。
+
+# 剧本内容
+{script_content}
+
+# 评估要求
+请从以下维度评估钩子强度：
+
+1. **开篇冲击力**
+   - 第1集/前30秒是否抓人
+   - 开篇冲突强度
+   - 零铺垫引爆戏剧冲突能力
+
+2. **悬念设置**
+   - 悬念设置技巧
+   - 悬念吸引力
+   - 悬念持续度
+
+3. **集末钩子**
+   - 每集结尾钩子质量
+   - 钩子精准度
+   - 扣人心弦程度
+
+4. **期待制造**
+   - 人物出场期待
+   - 情节转折期待
+   - 下集追看欲望
+
+# 输出格式（JSON）
+```json
+{
+  "dimension": "hook_strength",
+  "dimension_name": "钩子强度",
+  "score": 数值,
+  "grade": "S/A+/A/B+/B/C/D",
+  "analysis": {
+    "opening_impact": {
+      "first_episode_hook": "第1集开篇钩子评估",
+      "conflict_intensity": "开篇冲突强度",
+      "immediate_engagement": "瞬间抓人能力"
+    },
+    "suspense_setup": [
+      {
+        "suspense_type": "悬念类型",
+        "location": "具体位置（集数）",
+        "effectiveness": "有效性评估",
+        "appeal_level": "吸引力等级"
+      }
+    ],
+    "episode_end_hooks": [
+      {
+        "episode": "集数",
+        "hook_description": "钩子描述",
+        "hook_strength": "钩子强度（高/中/低）",
+        "anticipation_level": "期待度等级"
+      }
+    ],
+    "anticipation_building": {
+      "character_anticipation": "人物出场期待",
+      "plot_twist_anticipation": "情节转折期待",
+      "binge_watch_motivation": "连续追看动力"
+    }
+  },
+  "strengths": [
+    "钩子亮点1（附具体集数/场景）",
+    "钩子亮点2（附具体集数/场景）"
+  ],
+  "weak_hooks": [
+    "较弱钩子1（附具体位置和改进建议）",
+    "较弱钩子2（附具体位置和改进建议）"
+  ],
+  "hook_optimization": [
+    "钩子优化建议1",
+    "钩子优化建议2"
+  ],
+  "total_score": 数值,
+  "max_score": 100
+}
+```
+
+请严格按照JSON格式输出，并在分析中引用具体集数或场景作为例证。
